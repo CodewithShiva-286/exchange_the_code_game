@@ -74,6 +74,7 @@ async def reset_state():
     # Reset WS manager
     manager._teams.clear()
     manager._admin_ws = None
+    manager._problems_shown.clear()
 
     yield
 
@@ -104,15 +105,17 @@ async def _create_team_and_players(http_client, team_id="WS-TEAM-01"):
 
 @pytest.mark.asyncio
 async def test_player_ws_rejects_invalid_token(http_client):
-    """WS connection with a bad token → rejected (code 4001)."""
+    """WS connection with a bad token → accepted then immediately closed (4001)."""
     p1, _ = await _create_team_and_players(http_client)
 
     with TestClient(app) as tc:
-        with pytest.raises(Exception):
-            with tc.websocket_connect(
-                f"/ws/{p1['team_id']}/{p1['player_id']}?token=INVALID-TOKEN"
-            ):
-                pass
+        with tc.websocket_connect(
+            f"/ws/{p1['team_id']}/{p1['player_id']}?token=INVALID-TOKEN"
+        ) as ws:
+            # The server accepts then immediately closes with code 4001
+            # Starlette TestClient surfaces this as a disconnect
+            with pytest.raises(Exception):
+                ws.receive_json()
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,14 @@
 """
 ConnectionManager — team-based WebSocket registry.
 Validates session tokens on connect. Provides broadcast-to-team and send-to-player.
+
+Fixes applied:
+- Duplicate connections: old WS is closed before new one is accepted
+- SHOW_PROBLEMS: tracked per team, fires only once
+- Disconnect cleanup: only removes the WS if it matches the stored reference
+- Stale connection prevention: replaced connections are force-closed
 """
 
-import json
 import logging
 import aiosqlite
 from fastapi import WebSocket
@@ -22,13 +27,15 @@ class ConnectionManager:
         # { team_id: { player_id: WebSocket } }
         self._teams: dict[str, dict[int, WebSocket]] = {}
         self._admin_ws: WebSocket | None = None
+        # Track which teams have already received SHOW_PROBLEMS
+        self._problems_shown: set[str] = set()
 
     # ── Session Validation ─────────────────────────────────────────────────
 
     async def validate_session(self, team_id: str, player_id: int, token: str) -> bool:
         """
         Check that (player_id, team_id, session_token) exist together in the DB.
-        Called on every WS connect attempt.
+        Called on every WS connect attempt. Returns False → caller must reject.
         """
         async with aiosqlite.connect(settings.database_path) as db:
             async with db.execute(
@@ -39,8 +46,25 @@ class ConnectionManager:
 
     # ── Player Connections ─────────────────────────────────────────────────
 
-    async def connect_player(self, team_id: str, player_id: int, ws: WebSocket):
+    async def connect_player(self, team_id: str, player_id: int, ws: WebSocket) -> bool:
+        """
+        Accept and register a player WS connection.
+        If the player already has an active connection, the OLD one is closed
+        gracefully before the new one is stored (prevents ghost connections).
+        Returns True if this is a reconnect (old connection existed).
+        """
+        # Check for existing connection BEFORE accepting the new one
+        is_reconnect = False
+        if team_id in self._teams and player_id in self._teams[team_id]:
+            old_ws = self._teams[team_id][player_id]
+            is_reconnect = True
+            try:
+                await old_ws.close(code=4010, reason="Replaced by new connection")
+            except Exception:
+                pass  # Old socket may already be dead
+
         await ws.accept()
+
         if team_id not in self._teams:
             self._teams[team_id] = {}
         self._teams[team_id][player_id] = ws
@@ -53,11 +77,23 @@ class ConnectionManager:
             )
             await db.commit()
 
-        logger.info(f"Player {player_id} connected to team {team_id}")
+        logger.info(f"Player {player_id} {'re' if is_reconnect else ''}connected to team {team_id}")
+        return is_reconnect
 
-    async def disconnect_player(self, team_id: str, player_id: int):
-        if team_id in self._teams:
-            self._teams[team_id].pop(player_id, None)
+    async def disconnect_player(self, team_id: str, player_id: int, ws: WebSocket = None):
+        """
+        Remove a player from the registry.
+        If `ws` is provided, only remove if it matches the stored reference
+        (prevents a stale/replaced connection from removing the fresh one).
+        """
+        if team_id in self._teams and player_id in self._teams[team_id]:
+            stored_ws = self._teams[team_id][player_id]
+            # If ws is given but doesn't match stored → this is a stale disconnect, skip
+            if ws is not None and stored_ws is not ws:
+                logger.debug(f"Ignoring stale disconnect for player {player_id} in team {team_id}")
+                return
+
+            del self._teams[team_id][player_id]
             if not self._teams[team_id]:
                 del self._teams[team_id]
 
@@ -74,6 +110,12 @@ class ConnectionManager:
     # ── Admin Connection ───────────────────────────────────────────────────
 
     async def connect_admin(self, ws: WebSocket):
+        # Close existing admin connection if any
+        if self._admin_ws:
+            try:
+                await self._admin_ws.close(code=4010, reason="Replaced by new admin connection")
+            except Exception:
+                pass
         await ws.accept()
         self._admin_ws = ws
         logger.info("Admin connected")
@@ -81,6 +123,16 @@ class ConnectionManager:
     async def disconnect_admin(self):
         self._admin_ws = None
         logger.info("Admin disconnected")
+
+    # ── SHOW_PROBLEMS Tracker ──────────────────────────────────────────────
+
+    def mark_problems_shown(self, team_id: str):
+        """Mark that SHOW_PROBLEMS has been sent for this team."""
+        self._problems_shown.add(team_id)
+
+    def should_show_problems(self, team_id: str) -> bool:
+        """Returns True only if SHOW_PROBLEMS has NOT been sent yet for this team."""
+        return team_id not in self._problems_shown
 
     # ── Queries ────────────────────────────────────────────────────────────
 

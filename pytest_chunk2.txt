@@ -16,43 +16,4 @@ backend/tests/test_chunk2.py::test_admin_ping_pong PASSED                [ 77%]
 backend/tests/test_chunk2.py::test_unknown_event_returns_error PASSED    [ 88%]
 backend/tests/test_chunk2.py::test_chunk1_no_regression PASSED           [100%]
 
-============================== warnings summary ===============================
-backend/tests/test_chunk2.py::test_ping_pong
-  C:\Users\shiva\AppData\Roaming\Python\Python313\site-packages\_pytest\threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-42 (_connection_worker_thread)
-  
-  Traceback (most recent call last):
-    File "C:\Users\shiva\AppData\Roaming\Python\Python313\site-packages\aiosqlite\core.py", line 66, in _connection_worker_thread
-      future.get_loop().call_soon_threadsafe(set_result, future, result)
-      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    File "C:\Python313\Lib\asyncio\base_events.py", line 873, in call_soon_threadsafe
-      self._check_closed()
-      ~~~~~~~~~~~~~~~~~~^^
-    File "C:\Python313\Lib\asyncio\base_events.py", line 551, in _check_closed
-      raise RuntimeError('Event loop is closed')
-  RuntimeError: Event loop is closed
-  
-  During handling of the above exception, another exception occurred:
-  
-  Traceback (most recent call last):
-    File "C:\Python313\Lib\threading.py", line 1041, in _bootstrap_inner
-      self.run()
-      ~~~~~~~~^^
-    File "C:\Python313\Lib\threading.py", line 992, in run
-      self._target(*self._args, **self._kwargs)
-      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    File "C:\Users\shiva\AppData\Roaming\Python\Python313\site-packages\aiosqlite\core.py", line 75, in _connection_worker_thread
-      future.get_loop().call_soon_threadsafe(set_exception, future, e)
-      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-    File "C:\Python313\Lib\asyncio\base_events.py", line 873, in call_soon_threadsafe
-      self._check_closed()
-      ~~~~~~~~~~~~~~~~~~^^
-    File "C:\Python313\Lib\asyncio\base_events.py", line 551, in _check_closed
-      raise RuntimeError('Event loop is closed')
-  RuntimeError: Event loop is closed
-  
-  Enable tracemalloc to get traceback where the object was allocated.
-  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
-    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 9 passed, 1 warning in 1.08s =========================
+============================== 9 passed in 1.32s ==============================
