@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="./static/monaco-editor/min/vs/loader.js"></script>
+
+<script>
+    // 2. Configure the 'vs' path to point to your local static folder
+    require.config({ paths: { 'vs': './static/monaco-editor/min/vs' }});
+
+    let editor;
+
+    require(['vs/editor/editor.main'], function() {
+        editor = monaco.editor.create(document.getElementById('editor-container'), {
+            value: "// Start coding Part A here...",
+            language: 'cpp', // or 'python'
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontSize: 18,
+            readOnly: false // Start locked until the server says GO
+        });
+    });
+</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exchange Code Game</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <h1>Exchange Code</h1>
+        <p>Team 1 | Player Workspace</p>
+      </div>
+
+      <div class="top-center">
+        <div class="status-box">
+          Current Phase: <span class="highlight" id="phaseLabel">Part A</span>
+        </div>
+
+        <div class="timer-box">
+          Round Timer: <span class="highlight" id="timer">--:--</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <select class="language-select">
+          <option>C++</option>
+          <option>Python</option>
+        </select>
+
+        <button class="btn run-btn">Run</button>
+        <button class="btn submit-btn">Submit</button>
+        <button class="btn switch-btn">Switch Code</button>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="main-layout">
+
+      <!-- Problem Statement -->
+      <section class="problem-panel">
+        <div class="problem-header">
+          <span class="problem-tag">Problem Statement</span>
+          <span class="part-tag" id="partBadge">PART A</span>
+        </div>
+
+        <h2 class="problem-title">Exchange Code Challenge</h2>
+
+        <p class="problem-text">
+          You are given a programming problem that must be solved in two connected stages.
+          Each teammate first solves the first phase of a different problem. After the timer
+          ends, the code is exchanged, and each teammate continues the second phase using
+          the other teammate’s submitted Part A code.
+        </p>
+
+        <div class="phase-block">
+          <h3>Part A</h3>
+          <p>
+            Build the first part of the solution and write a correct intermediate logic
+            so that your teammate can continue from your code later.
+          </p>
+        </div>
+
+        <div class="phase-block">
+          <h3>Part B</h3>
+          <p>
+            Continue the given exchanged code, complete the second phase of the logic,
+            and produce the final correct solution.
+          </p>
+        </div>
+
+        <div class="note-box">
+          <p>
+            Use the <strong>Switch Code</strong> option after the timer ends to simulate the
+            exchange step between teammates.
+          </p>
+        </div>
+      </section>
+
+      <!-- Code Editor -->
+      <section class="editor-panel">
+        <div class="editor-header">
+          <h2>Code Editor</h2>
+          <span class="editor-status">Ready to code</span>
+        </div>
+
+        <div id="editor-container" style="flex: 1; width: 100%; border-top: 1px solid #334155; border-bottom: 1px solid #334155;"></div>
+
+        <div class="bottom-panel">
+          <div class="bottom-panel-header">Output Console</div>
+          <div class="console-box">
+            Run results will appear here...
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</body>
+</html>

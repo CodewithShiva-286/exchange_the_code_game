@@ -1,0 +1,232 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background-color: #0f172a;
+  color: #f8fafc;
+  min-height: 100vh;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  background-color: #111827;
+  border-bottom: 1px solid #334155;
+  flex-wrap: wrap;
+}
+
+.brand h1 {
+  font-size: 24px;
+  margin-bottom: 4px;
+  color: #ffffff;
+}
+
+.brand p {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.top-center {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-box,
+.timer-box {
+  background-color: #1e293b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid #334155;
+}
+
+.highlight {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.top-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.language-select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background-color: #0f172a;
+  color: white;
+  outline: none;
+}
+
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.run-btn {
+  background-color: #2563eb;
+}
+
+.submit-btn {
+  background-color: #16a34a;
+}
+
+.switch-btn {
+  background-color: #7c3aed;
+}
+
+/* Layout */
+.main-layout {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* Problem Panel */
+.problem-panel {
+  width: 35%;
+  background-color: #111827;
+  border-right: 1px solid #334155;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.problem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.problem-tag {
+  background-color: #1d4ed8;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.part-tag {
+  background-color: #f59e0b;
+  color: #111827;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.problem-title {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.problem-text {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #e2e8f0;
+  margin-bottom: 22px;
+}
+
+.phase-block {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.phase-block h3 {
+  color: #fbbf24;
+  margin-bottom: 8px;
+}
+
+.note-box {
+  margin-top: 22px;
+  background-color: #172554;
+  border-left: 4px solid #60a5fa;
+  padding: 16px;
+  border-radius: 10px;
+}
+
+/* Editor */
+.editor-panel {
+  width: 65%;
+  display: flex;
+  flex-direction: column;
+  background-color: #0b1120;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background-color: #111827;
+  border-bottom: 1px solid #334155;
+}
+
+.code-area {
+  flex: 1;
+  background-color: #020617;
+  color: #f8fafc;
+  padding: 20px;
+  border: none;
+  resize: none;
+}
+
+/* Console */
+.bottom-panel {
+  height: 170px;
+  border-top: 1px solid #334155;
+}
+
+.bottom-panel-header {
+  padding: 12px 18px;
+  background-color: #111827;
+}
+
+.console-box {
+  padding: 16px;
+  color: #cbd5e1;
+}
+
+/* Hover */
+.btn:hover,
+.language-select:hover {
+  opacity: 0.9;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .problem-panel,
+  .editor-panel {
+    width: 100%;
+  }
+}
