@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Exchange the Code - Platform Backend
 
 A real-time, zero-trust competitive coding platform built specifically for LAN-based Techfests. It leverages a robust **FastAPI** backend with **async SQLite (aiosqlite)**, utilizing WAL mode for extreme concurrency and zero locks during problem dispatching and atomic team swapping.
@@ -119,6 +118,3 @@ Strict testing is in place for chunk development stability. Run the pytest suite
 ```sh
 python -m pytest backend/tests/ -v
 ```
-=======
-# csi_javascript
->>>>>>> afadc4ba0012d36d01ab3b2814f9caed4cf471df

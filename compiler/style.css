@@ -113,6 +113,7 @@ body {
   border-right: 1px solid #334155;
   padding: 24px;
   overflow-y: auto;
+  height: 90vh;
 }
 
 .problem-header {
@@ -175,6 +176,7 @@ body {
 /* Editor */
 .editor-panel {
   width: 65%;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   background-color: #0b1120;
@@ -197,9 +199,19 @@ body {
   resize: none;
 }
 
+#drag-bar {
+  height: 6px;
+  cursor:row-resize;
+  background-color: #1e293b;
+}
+
+#drag-bar:hover {
+  background: #0f172a;
+}
+
 /* Console */
 .bottom-panel {
-  height: 170px;
+  /* height: 20vh; */
   border-top: 1px solid #334155;
 }
 
