@@ -3,16 +3,14 @@ const runBtn = document.querySelector('.run-btn');
 const submitBtn = document.querySelector('.submit-btn');
 const switchBtn = document.querySelector('.switch-btn');
 const consoleBox = document.querySelector('.console-box');
-const output = document.querySelector('.bottom-panel');
 
-// output.style.display = "none";
+let currentPhase = 'A';
+
 // 1. Run Button Logic
 runBtn.addEventListener('click', () => {
 
-    // output.style.display = "block";
-
     // Get the current code from Monaco Editor
-    const code = editor.getValue();
+    const code = editor.getValue();             // --> Variable for getting code text from editor
     console.log("Running Code:", code);
     
     // Placeholder UI update
@@ -45,10 +43,9 @@ switchBtn.addEventListener('click', () => {
     consoleBox.innerHTML = '<span style="color: #fbbf24;">Switching to Part B...</span>';
     
     setTimeout(() => {
-        
 
         // 🔁 Reset time
-        timeRemaining = 180;
+        timeRemaining = 90;
 
         editor.updateOptions({ readOnly: false });
         editor.setValue("// Partner's Part A...\n\n// Continue Part B here:\n");
@@ -66,7 +63,7 @@ switchBtn.addEventListener('click', () => {
 
 // 4. Timer Logic
 const timerElement = document.getElementById('timer');
-let timeRemaining = 180; // 3 minutes (180 seconds)
+let timeRemaining = 90; // 3 minutes (180 seconds)
 let timerInterval = null;
 function formatTime(seconds) {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -74,27 +71,34 @@ function formatTime(seconds) {
     return `${m}:${s}`;
 }
 
-// Start immediately on script load
+// Timer function for 
 function startTimer() {
-    clearInterval(timerInterval);   // stop old timer
+    clearInterval(timerInterval);
 
     timerInterval = setInterval(() => {
+
         if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             timerElement.innerText = "00:00";
 
-            if (typeof editor !== 'undefined') {
+            if (currentPhase === "A") {
+                // 🔥 AUTO SWITCH TO PART B
+                switchToPartB(true);
+            } else {
+                // ⛔ End of Part B → lock editor
                 editor.updateOptions({ readOnly: true });
-                consoleBox.innerHTML = '<span style="color: #ef4444;">Time is up! Code locked.</span>';
+                consoleBox.innerHTML = '<span style="color: #ef4444;">Final Time Over! Code locked.</span>';
             }
+
         } else {
             timerElement.innerText = formatTime(timeRemaining);
             timeRemaining--;
         }
+
     }, 1000);
 }
 window.onload = () => {
-    timeRemaining = 180;
+    timeRemaining = 90;
     startTimer();
 };
 
@@ -134,3 +138,47 @@ document.addEventListener("mouseup", () => {
   isDragging = false;
   document.body.style.cursor = "default";
 });
+
+// Function for switching the part A and part B logic
+
+switchBtn.addEventListener('click', () => {
+    switchToPartB(false);
+});
+
+function switchToPartB(auto = false) {
+    if (currentPhase === "B") return; // prevent double switch
+
+    currentPhase = "B";
+
+    console.log("Switching to Part B...");
+
+    consoleBox.innerHTML = auto
+        ? '<span style="color: #f97316;">Auto-switching to Part B...</span>'
+        : '<span style="color: #fbbf24;">Switching to Part B...</span>';
+
+    setTimeout(() => {
+
+        // 🔁 Reset timer for Part B
+        timeRemaining = 90;
+
+        // 🔓 Unlock editor
+        editor.updateOptions({ readOnly: false });
+
+        // 🔁 Load partner code (placeholder)
+        editor.setValue("// Partner's Part A...\n\n// Continue Part B here:\n");
+
+        // 🧠 Update UI
+        document.getElementById('phaseLabel').innerText = "Part B";
+        document.getElementById('partBadge').innerText = "PART B";
+
+        // 👇 Toggle visibility
+        document.getElementById("partA-block").style.display = "none";
+        document.getElementById("partB-block").style.display = "block";
+
+        consoleBox.innerHTML = 'Ready to code Part B.';
+
+        // ▶️ Restart timer
+        startTimer();
+
+    }, 1200);
+}
