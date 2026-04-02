@@ -194,3 +194,21 @@ async def test_fetch_problem_detail(client):
 async def test_fetch_nonexistent_problem_rejected(client):
     res = await client.get("/problem/ZZZZ-DOES-NOT-EXIST")
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_player_join_rejects_script_like_name(client):
+    await client.post("/admin/create-team", json={"team_id": "SAFE-01"})
+    res = await client.post("/join", json={"team_id": "SAFE-01", "name": "<script>alert(1)</script>"})
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_security_headers_present(client):
+    res = await client.get("/health")
+    assert res.status_code == 200
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["referrer-policy"] == "no-referrer"
+    assert res.headers["permissions-policy"] == "camera=(), microphone=(), geolocation=()"
+    assert res.headers["cache-control"] == "no-store"
