@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+   <meta charset="UTF-8">
+   <title>Master PC — Admin Dashboard</title>
+   <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+   <header>
+      <h1>Admin Dashboard</h1>
+
+      <div class="controls">
+         <button class="btn-light" id="leaderboardBtn">Leaderboard</button>
+         <button class="btn-light assign-btn" id="manageBtn">Manage Assignments</button>
+         <button class="btn-yellow" onclick="startAll()">Start All</button>
+         <button class="btn-red" onclick="resetAll()">Reset</button>
+      </div>
+   </header>
+
+   <div class="container" id="teamContainer"></div>
+
+   <script src="script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,106 @@
+body {
+   margin: 0;
+   font-family: 'Segoe UI', sans-serif;
+   background: #0d0d0d;
+   color: white;
+}
+
+header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 20px 40px;
+   border-bottom: 1px solid #333;
+}
+
+h1 {
+   font-size: 24px;
+}
+
+.controls button {
+   margin-left: 10px;
+   padding: 10px 15px;
+   border: none;
+   border-radius: 6px;
+   cursor: pointer;
+   font-weight: bold;
+}
+
+.btn-light {
+   background: #e0e0e0;
+   color: black;
+}
+.assign-btn {background-color:#1194f7; color: white;}
+
+.btn-yellow {
+   background: #ffc107;
+   color: black;
+}
+
+.btn-red {
+   background: #dc3545;
+   color: white;
+}
+
+.container {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+   gap: 20px;
+   padding: 30px;
+}
+
+.team-card {
+   background: #1a1a1a;
+   padding: 20px;
+   border-radius: 12px;
+   box-shadow: inset 0 0 10px rgba(0, 114, 255, 0.6), inset 0 0 20px rgba(0, 114, 255, 0.4);
+   width: 14rem;
+}
+
+.team-card h3 {
+   margin-top: 0;
+}
+
+.status {
+   margin: 10px 0;
+}
+
+.dot {
+   height: 10px;
+   width: 10px;
+   border-radius: 50%;
+   display: inline-block;
+   margin-right: 5px;
+}
+
+.green {
+   background: #28a745;
+}
+
+.red {
+   background: #dc3545;
+}
+
+select {
+   width: 100%;
+   padding: 8px;
+   margin: 10px 0;
+   background: #222;
+   color: white;
+   border: 1px solid #444;
+   border-radius: 5px;
+}
+
+.btn-swap {
+   width: 100%;
+   padding: 10px;
+   background: #333;
+   border: none;
+   color: white;
+   border-radius: 5px;
+   cursor: pointer;
+}
+
+.btn-swap:hover {
+   background: #555;
+}
