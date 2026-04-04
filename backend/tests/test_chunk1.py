@@ -1,18 +1,35 @@
+"""
+test_chunk1.py — v2 Backend Foundation
+
+Tests the REST API endpoints with the new group-based schema:
+- Team creation
+- Group creation (2 problems at positions 1 and 2)
+- Group assignment to team
+- Player join with atomic slot assignment
+- 3rd player rejected
+- Unique session tokens
+- Problem detail endpoint
+
+REMOVED from v1:
+- test_assign_exactly_two_problems (assign-problems endpoint gone)
+- test_fetch_team_problems (GET /team/{team_id}/problems removed)
+"""
+
 import pytest
 import pytest_asyncio
 import os
+import asyncio
 from httpx import AsyncClient, ASGITransport
 from backend.database import settings, init_db
 from backend.problems.problem_loader import load_problems, seed_problems_to_db, get_all_problems
 
-# Override DB path for tests — must happen before app import
+# Override DB path — must happen before app import
 settings.database_path = "test_exchange.db"
 
 from backend.main import app  # noqa: E402
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+
+# ─── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
@@ -20,18 +37,23 @@ async def setup_db():
     for suffix in ("", "-wal", "-shm"):
         path = settings.database_path + suffix
         if os.path.exists(path):
-            os.remove(path)
+            try:
+                os.remove(path)
+            except PermissionError:
+                pass
 
     await init_db()
     load_problems()
     await seed_problems_to_db()
-
     yield
 
     for suffix in ("", "-wal", "-shm"):
         path = settings.database_path + suffix
         if os.path.exists(path):
-            os.remove(path)
+            try:
+                os.remove(path)
+            except PermissionError:
+                pass
 
 
 @pytest_asyncio.fixture
@@ -42,9 +64,29 @@ async def client():
     ) as c:
         yield c
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+
+async def _create_group(client, group_id="GROUP-A"):
+    """Helper: create a group with the first 2 loaded problems."""
+    pids = list(get_all_problems().keys())
+    return await client.post(
+        "/admin/create-group",
+        json={"group_id": group_id, "problem_ids": [pids[0], pids[1]]}
+    )
+
+
+async def _setup_team_with_group(client, team_id="T-01", group_id="GROUP-A"):
+    """Helper: create team + create group + assign group."""
+    await client.post("/admin/create-team", json={"team_id": team_id})
+    await _create_group(client, group_id)
+    await client.post(
+        "/admin/assign-group",
+        json={"team_id": team_id, "group_id": group_id}
+    )
+
+
+# ─── Tests ─────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_health_check(client):
@@ -71,80 +113,131 @@ async def test_create_team_duplicate_rejected(client):
 
 
 @pytest.mark.asyncio
-async def test_assign_exactly_two_problems(client):
-    await client.post("/admin/create-team", json={"team_id": "ASSIGN-01"})
-    pids = list(get_all_problems().keys())
-    assert len(pids) >= 2, "Need at least 2 loaded problems"
-
-    res = await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "ASSIGN-01", "problem_ids": [pids[0], pids[1]]}
-    )
+async def test_create_group_success(client):
+    res = await _create_group(client, "GROUP-B")
     assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["group_id"] == "GROUP-B"
 
 
 @pytest.mark.asyncio
-async def test_assign_problems_rejects_single(client):
-    """Pydantic min_length=2 should reject a list of 1."""
-    await client.post("/admin/create-team", json={"team_id": "SINGLE-01"})
+async def test_create_group_rejects_duplicate_problems(client):
+    """Both positions must have different problems."""
     pids = list(get_all_problems().keys())
     res = await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "SINGLE-01", "problem_ids": [pids[0]]}
-    )
-    assert res.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_assign_problems_rejects_duplicates(client):
-    await client.post("/admin/create-team", json={"team_id": "DUPPROB-01"})
-    pids = list(get_all_problems().keys())
-    res = await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "DUPPROB-01", "problem_ids": [pids[0], pids[0]]}
+        "/admin/create-group",
+        json={"group_id": "GROUP-C", "problem_ids": [pids[0], pids[0]]}
     )
     assert res.status_code == 400
     assert "unique" in res.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
-async def test_assign_problems_rejects_reassignment(client):
-    """Once problems are assigned to a team, assigning again should fail."""
-    await client.post("/admin/create-team", json={"team_id": "REASSIGN-01"})
-    pids = list(get_all_problems().keys())
-    await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "REASSIGN-01", "problem_ids": [pids[0], pids[1]]}
-    )
-    res = await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "REASSIGN-01", "problem_ids": [pids[0], pids[1]]}
-    )
+async def test_create_group_rejects_duplicate_group_id(client):
+    await _create_group(client, "GROUP-D")
+    res = await _create_group(client, "GROUP-D")
     assert res.status_code == 400
-    assert "already assigned" in res.json()["detail"].lower()
+    assert "already exists" in res.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_player_join_success(client):
+async def test_create_group_rejects_single_problem(client):
+    """Pydantic min_length=2 enforces exactly 2 problem IDs."""
+    pids = list(get_all_problems().keys())
+    res = await client.post(
+        "/admin/create-group",
+        json={"group_id": "GROUP-E", "problem_ids": [pids[0]]}
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_assign_group_success(client):
+    await client.post("/admin/create-team", json={"team_id": "T-ASSIGN-01"})
+    await _create_group(client, "GROUP-F")
+    res = await client.post(
+        "/admin/assign-group",
+        json={"team_id": "T-ASSIGN-01", "group_id": "GROUP-F"}
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_assign_group_rejects_unknown_team(client):
+    await _create_group(client, "GROUP-G")
+    res = await client.post(
+        "/admin/assign-group",
+        json={"team_id": "NO-SUCH-TEAM", "group_id": "GROUP-G"}
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_assign_group_rejects_unknown_group(client):
+    await client.post("/admin/create-team", json={"team_id": "T-ASSIGN-02"})
+    res = await client.post(
+        "/admin/assign-group",
+        json={"team_id": "T-ASSIGN-02", "group_id": "NO-SUCH-GROUP"}
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_assign_group_rejects_reassignment(client):
+    """A team cannot have its group reassigned once set."""
+    await client.post("/admin/create-team", json={"team_id": "T-REASSIGN"})
+    await _create_group(client, "GROUP-H")
+    await client.post(
+        "/admin/assign-group",
+        json={"team_id": "T-REASSIGN", "group_id": "GROUP-H"}
+    )
+    pids = list(get_all_problems().keys())
+    await client.post(
+        "/admin/create-group",
+        json={"group_id": "GROUP-I", "problem_ids": [pids[1], pids[0]]}
+    )
+    res = await client.post(
+        "/admin/assign-group",
+        json={"team_id": "T-REASSIGN", "group_id": "GROUP-I"}
+    )
+    assert res.status_code == 400
+    assert "already has a group" in res.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_player_join_success_slot_1(client):
+    """First player to join gets slot 1."""
     await client.post("/admin/create-team", json={"team_id": "JOIN-01"})
     res = await client.post("/join", json={"team_id": "JOIN-01", "name": "Alice"})
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
+    assert data["player_slot"] == 1
     assert "session_token" in data
-    assert data["team_id"] == "JOIN-01"
     assert isinstance(data["player_id"], int)
 
 
 @pytest.mark.asyncio
+async def test_player_join_success_slot_2(client):
+    """Second player to join gets slot 2."""
+    await client.post("/admin/create-team", json={"team_id": "JOIN-02"})
+    await client.post("/join", json={"team_id": "JOIN-02", "name": "Alice"})
+    res = await client.post("/join", json={"team_id": "JOIN-02", "name": "Bob"})
+    assert res.status_code == 200
+    assert res.json()["player_slot"] == 2
+
+
+@pytest.mark.asyncio
 async def test_player_join_invalid_team_rejected(client):
-    res = await client.post("/join", json={"team_id": "DOES-NOT-EXIST", "name": "Ghost"})
+    res = await client.post("/join", json={"team_id": "NO-TEAM", "name": "Ghost"})
     assert res.status_code == 404
-    assert "not found" in res.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
 async def test_player_join_max_two_per_team(client):
+    """3rd join attempt must be rejected."""
     await client.post("/admin/create-team", json={"team_id": "FULL-01"})
     await client.post("/join", json={"team_id": "FULL-01", "name": "Alice"})
     await client.post("/join", json={"team_id": "FULL-01", "name": "Bob"})
@@ -159,23 +252,6 @@ async def test_player_unique_session_tokens(client):
     r1 = await client.post("/join", json={"team_id": "TOKEN-01", "name": "Alice"})
     r2 = await client.post("/join", json={"team_id": "TOKEN-01", "name": "Bob"})
     assert r1.json()["session_token"] != r2.json()["session_token"]
-
-
-@pytest.mark.asyncio
-async def test_fetch_team_problems(client):
-    await client.post("/admin/create-team", json={"team_id": "FETCH-01"})
-    pids = list(get_all_problems().keys())
-    await client.post(
-        "/admin/assign-problems",
-        json={"team_id": "FETCH-01", "problem_ids": [pids[0], pids[1]]}
-    )
-    res = await client.get("/team/FETCH-01/problems")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["team_id"] == "FETCH-01"
-    assert len(data["problems"]) == 2
-    returned_ids = {p["id"] for p in data["problems"]}
-    assert returned_ids == set(pids[:2])
 
 
 @pytest.mark.asyncio
@@ -194,3 +270,28 @@ async def test_fetch_problem_detail(client):
 async def test_fetch_nonexistent_problem_rejected(client):
     res = await client.get("/problem/ZZZZ-DOES-NOT-EXIST")
     assert res.status_code == 404
+
+@pytest.mark.asyncio
+async def test_player_join_concurrent(client):
+    """
+    Test that concurrent joins result in distinct player slots (no duplicates).
+    Uses asyncio.gather to simulate simultaneous requests.
+    """
+    await client.post("/admin/create-team", json={"team_id": "CONC-01"})
+    
+    # 3 concurrent requests (2 should succeed, 1 should fail)
+    reqs = [
+        client.post("/join", json={"team_id": "CONC-01", "name": f"Player-{i}"})
+        for i in range(3)
+    ]
+    
+    responses = await asyncio.gather(*reqs)
+    
+    successes = [r for r in responses if r.status_code == 200]
+    failures = [r for r in responses if r.status_code == 400]
+    
+    assert len(successes) == 2, "Exactly two concurrent joins should succeed"
+    assert len(failures) == 1, "The third concurrent join should be rejected as full"
+    
+    slots_assigned = {r.json()["player_slot"] for r in successes}
+    assert slots_assigned == {1, 2}, "Both players must get distinct slots (1 and 2)"

@@ -40,3 +40,4 @@ pytest_chunk1_recheck.txt
 pytest_chunk2.txt
 pytest_output.txt
 test_exchange_ws.db
+
