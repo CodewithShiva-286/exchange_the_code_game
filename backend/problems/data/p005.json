@@ -1,0 +1,9 @@
+{
+  "id": "p005",
+  "title": "Binary Conversion",
+  "description": "⏱ Time: 6 mins\nPart A: Convert decimal to 8-bit binary.\nPart B: Count number of 1s.",
+  "part_a_prompt": "# PART A: Write a function 'decimal_to_8bit_binary' that takes a decimal integer and returns its 8-bit binary representation as a string with zero padding.",
+  "part_b_prompt": "# PART B: Use your partner's 'decimal_to_8bit_binary' to implement 'count_ones(n)'. It should return the integer count of '1's in the binary representation of n.",
+  "interface_stub": "def decimal_to_8bit_binary(n: int) -> str:\n    pass\n\ndef count_ones(n: int) -> int:\n    pass",
+  "language": "python"
+}

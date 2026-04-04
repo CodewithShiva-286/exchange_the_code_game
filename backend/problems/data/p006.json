@@ -1,0 +1,9 @@
+{
+  "id": "p006",
+  "title": "Digit Sum",
+  "description": "⏱ Time: 5 mins\nPart A: Sum digits of number.\nPart B: Square the result.",
+  "part_a_prompt": "# PART A: Write a function 'sum_digits' that takes a positive integer and returns the sum of its digits.",
+  "part_b_prompt": "# PART B: Use your partner's 'sum_digits' to implement 'process_number(n)'. It should return the square of the sum of digits of n.",
+  "interface_stub": "def sum_digits(n: int) -> int:\n    pass\n\ndef process_number(n: int) -> int:\n    pass",
+  "language": "python"
+}

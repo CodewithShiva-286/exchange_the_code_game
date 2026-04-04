@@ -1,0 +1,9 @@
+{
+  "id": "p003",
+  "title": "Reverse & Clean",
+  "description": "⏱ Time: 6 mins\nPart A: Reverse a sentence and remove spaces.\nPart B: Swap case of characters in the reversed text.",
+  "part_a_prompt": "# PART A: Write a function 'reverse_and_clean_spaces' that takes a sentence, reverses it, and removes all spaces.",
+  "part_b_prompt": "# PART B: Use your partner's 'reverse_and_clean_spaces' to implement 'process_sentence(sentence)'. It should swap the case of all characters in the returned string.",
+  "interface_stub": "def reverse_and_clean_spaces(sentence: str) -> str:\n    pass\n\ndef process_sentence(sentence: str) -> str:\n    pass",
+  "language": "python"
+}

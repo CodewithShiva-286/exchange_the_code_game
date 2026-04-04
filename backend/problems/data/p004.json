@@ -1,0 +1,9 @@
+{
+  "id": "p004",
+  "title": "Vowel Stripper",
+  "description": "⏱ Time: 5 mins\nPart A: Remove vowels from paragraph.\nPart B: Return \"Long\"/\"Short\".",
+  "part_a_prompt": "# PART A: Write a function 'remove_vowels' that takes a paragraph string and returns it with all vowels (a, e, i, o, u) removed, case-insensitive.",
+  "part_b_prompt": "# PART B: Use your partner's 'remove_vowels' to implement 'evaluate_paragraph(paragraph)'. If the resulting string has more than 10 characters, return 'Long', otherwise return 'Short'.",
+  "interface_stub": "def remove_vowels(paragraph: str) -> str:\n    pass\n\ndef evaluate_paragraph(paragraph: str) -> str:\n    pass",
+  "language": "python"
+}
