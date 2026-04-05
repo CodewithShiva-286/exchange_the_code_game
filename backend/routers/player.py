@@ -7,16 +7,26 @@ Changes from v1:
 - GET /team/{team_id}/problems: REMOVED (players don't browse all problems;
   assignment is delivered via WS ASSIGNED event)
 - GET /problem/{problem_id}: kept for problem detail lookups
+- POST /submit-code: stores Part A code for later exchange
+- GET /get-partner-code: retrieves partner's submitted code
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 import aiosqlite
 import uuid
 from ..database import get_db
-from ..models import JoinRequest, JoinResponse, ProblemDetail
+from ..models import (
+    JoinRequest, JoinResponse, ProblemDetail,
+    SubmitCodeRequest, SubmitCodeResponse, PartnerCodeResponse,
+)
 from ..problems.problem_loader import get_problem
 
 router = APIRouter(tags=["player"])
+
+# ── In-memory code store ──────────────────────────────────────────────────────
+# Key: (team_id, problem_id, player)  →  code string
+# Persists for the lifetime of the server process.
+_submitted_code: dict[tuple[str, str, str], str] = {}
 
 
 @router.post("/join", response_model=JoinResponse)
@@ -85,3 +95,47 @@ async def get_problem_details(problem_id: str):
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
     return problem
+
+
+# ── Code Exchange Endpoints ───────────────────────────────────────────────────
+
+@router.post("/submit-code", response_model=SubmitCodeResponse)
+async def submit_code(request: SubmitCodeRequest):
+    """
+    Store a player's Part A code so the partner can retrieve it later.
+    Overwrites any previous submission for the same (team, problem, player).
+    """
+    key = (request.team_id, request.problem_id, request.player)
+    _submitted_code[key] = request.code
+    return SubmitCodeResponse(
+        status="success",
+        message=f"Code submitted by Player {request.player} for {request.problem_id}.",
+    )
+
+
+@router.get("/get-partner-code", response_model=PartnerCodeResponse)
+async def get_partner_code(
+    team_id: str = Query(..., description="Team ID"),
+    problem_id: str = Query(..., description="Problem ID"),
+    player: str = Query(..., pattern="^[AB]$", description="Requesting player (A or B)"),
+):
+    """
+    Return the partner's submitted code.
+    If player=A requests, we return player B's code, and vice-versa.
+    Returns status='waiting' if the partner hasn't submitted yet.
+    """
+    partner = "B" if player == "A" else "A"
+    key = (team_id, problem_id, partner)
+    code = _submitted_code.get(key)
+
+    if code is None:
+        return PartnerCodeResponse(
+            status="waiting",
+            message=f"Player {partner} has not submitted code yet.",
+        )
+
+    return PartnerCodeResponse(
+        status="success",
+        code=code,
+    )
+

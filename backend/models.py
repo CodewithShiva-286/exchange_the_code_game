@@ -87,3 +87,21 @@ class AssignedProblemDetail(BaseModel):
     interface_stub: str
     language: str
     # Part B prompt intentionally omitted (revealed only at swap)
+
+
+# ── Code Exchange Endpoints ───────────────────────────────────────────────────
+
+class SubmitCodeRequest(BaseModel):
+    team_id: str = Field(..., min_length=1, description="Team ID the player belongs to")
+    player: str = Field(..., pattern="^[AB]$", description="Player identifier: 'A' or 'B'")
+    problem_id: str = Field(..., min_length=1, description="Problem being solved")
+    code: str = Field(..., description="Source code submitted by the player")
+
+class SubmitCodeResponse(BaseModel):
+    status: str
+    message: str
+
+class PartnerCodeResponse(BaseModel):
+    status: str
+    code: Optional[str] = None
+    message: Optional[str] = None

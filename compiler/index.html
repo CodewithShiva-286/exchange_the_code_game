@@ -28,13 +28,34 @@
 </head>
 
 <body>
+  <!-- Session Guard: redirect to join page if not logged in -->
+  <script>
+    (function() {
+      const session = localStorage.getItem('session');
+      if (!session) {
+        window.location.href = 'join.html';
+        return;
+      }
+      try {
+        const data = JSON.parse(session);
+        if (!data.session_token || !data.team_id) {
+          localStorage.removeItem('session');
+          window.location.href = 'join.html';
+        }
+      } catch (e) {
+        localStorage.removeItem('session');
+        window.location.href = 'join.html';
+      }
+    })();
+  </script>
+
   <div class="app-container">
 
     <!-- Top Bar -->
     <header class="topbar">
       <div class="brand">
         <h1>Exchange Code</h1>
-        <p>Team 1 | Player Workspace</p>
+        <p id="brandInfo">Loading session...</p>
       </div>
 
       <div class="top-center">
@@ -53,9 +74,10 @@
           <option>Python</option>
         </select>
 
-        <button class="btn run-btn">Run</button>
-        <button class="btn submit-btn">Submit</button>
-        <button class="btn switch-btn">Switch Code</button>
+        <button class="btn run-btn" id="runBtn">Run</button>
+        <button class="btn submit-btn" id="submitBtn">Submit</button>
+        <button class="btn switch-btn" id="switchBtn" disabled>Switch Code</button>
+        <button class="btn logout-btn" id="logoutBtn" title="Leave game">⏻</button>
       </div>
     </header>
 
@@ -69,29 +91,31 @@
           <span class="part-tag" id="partBadge">PART A</span>
         </div>
 
-        <h2 class="problem-title">Exchange Code Challenge</h2>
-
-        <p class="problem-text">
-          You are given a programming problem that must be solved in two connected stages.
-          Each teammate first solves the first phase of a different problem. After the timer
-          ends, the code is exchanged, and each teammate continues the second phase using
-          the other teammate’s submitted Part A code.
-        </p>
-
-        <div class="phase-block">
-          <h3>Part A</h3>
-          <p>
-            Build the first part of the solution and write a correct intermediate logic
-            so that your teammate can continue from your code later.
-          </p>
+        <!-- Problem Selector -->
+        <div class="problem-selector">
+          <label for="problemSelect">Select Problem:</label>
+          <select id="problemSelect" class="problem-select">
+            <option value="p001">p001 — Two Sum</option>
+            <option value="p002">p002 — Palindrome Checker</option>
+          </select>
         </div>
 
-        <div class="phase-block">
+        <!-- Dynamic Title -->
+        <h2 class="problem-title" id="problem-title">Loading...</h2>
+
+        <!-- Dynamic Description -->
+        <p class="problem-text" id="problem-description">Fetching problem data...</p>
+
+        <!-- Dynamic Part A -->
+        <div class="phase-block" id="partA-block">
+          <h3>Part A</h3>
+          <p id="partA">Loading Part A...</p>
+        </div>
+
+        <!-- Dynamic Part B -->
+        <div class="phase-block" id="partB-block">
           <h3>Part B</h3>
-          <p>
-            Continue the given exchanged code, complete the second phase of the logic,
-            and produce the final correct solution.
-          </p>
+          <p id="partB">Loading Part B...</p>
         </div>
 
         <div class="note-box">
@@ -99,6 +123,12 @@
             Use the <strong>Switch Code</strong> option after the timer ends to simulate the
             exchange step between teammates.
           </p>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="problem-loading" id="problemLoading">
+          <div class="spinner"></div>
+          <span>Fetching problem…</span>
         </div>
       </section>
 
