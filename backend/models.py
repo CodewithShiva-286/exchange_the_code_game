@@ -7,7 +7,8 @@ SAFE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9 ._\-']+$")
 SAFE_PROBLEM_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
-# --- ADMIN ENDPOINTS ---
+
+# ── Admin Endpoints ───────────────────────────────────────────────────────────
 
 class TeamCreateRequest(BaseModel):
     team_id: str = Field(..., min_length=1, max_length=32, description="Unique alphanumeric team identifier")
@@ -93,6 +94,10 @@ class JoinResponse(BaseModel):
     session_token: str
     team_id: str
     player_id: int
+    player_slot: int  # 1 = first joiner, 2 = second joiner
+
+
+# ── Problem Models ────────────────────────────────────────────────────────────
 
 
 class ProblemSummary(BaseModel):

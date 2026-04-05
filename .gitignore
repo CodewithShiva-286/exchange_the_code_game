@@ -36,7 +36,13 @@ pytest_*.txt
 .DS_Store
 Thumbs.db
 
-pytest_chunk1_recheck.txt
-pytest_chunk2.txt
-pytest_output.txt
-test_exchange_ws.db
+# Output files, logs, and executables
+*.txt
+!requirements.txt
+!CMakeLists.txt
+*.out
+*.exe
+*.log
+*.o
+*.obj
+

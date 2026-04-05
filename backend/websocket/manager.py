@@ -1,12 +1,10 @@
 """
-ConnectionManager — team-based WebSocket registry.
-Validates session tokens on connect. Provides broadcast-to-team and send-to-player.
+ConnectionManager — team-based WebSocket registry (v2).
+Validates session tokens on connect. Provides send-to-player and broadcast-to-team.
 
-Fixes applied:
-- Duplicate connections: old WS is closed before new one is accepted
-- SHOW_PROBLEMS: tracked per team, fires only once
-- Disconnect cleanup: only removes the WS if it matches the stored reference
-- Stale connection prevention: replaced connections are force-closed
+v2 changes:
+- Renamed _problems_shown → _assigned_sent (tracks ASSIGNED event, not SHOW_PROBLEMS)
+- Updated mark/should methods accordingly
 """
 
 import logging
@@ -27,8 +25,8 @@ class ConnectionManager:
         # { team_id: { player_id: WebSocket } }
         self._teams: dict[str, dict[int, WebSocket]] = {}
         self._admin_ws: WebSocket | None = None
-        # Track which teams have already received SHOW_PROBLEMS
-        self._problems_shown: set[str] = set()
+        # Track which teams have already had ASSIGNED sent to both players
+        self._assigned_sent: set[str] = set()
 
     # ── Session Validation ─────────────────────────────────────────────────
 
@@ -37,7 +35,7 @@ class ConnectionManager:
         Check that (player_id, team_id, session_token) exist together in the DB.
         Called on every WS connect attempt. Returns False → caller must reject.
         """
-        async with aiosqlite.connect(settings.database_path) as db:
+        async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
             async with db.execute(
                 "SELECT id FROM players WHERE id = ? AND team_id = ? AND session_token = ?",
                 (player_id, team_id, token)
@@ -70,7 +68,7 @@ class ConnectionManager:
         self._teams[team_id][player_id] = ws
 
         # Update connection status in DB
-        async with aiosqlite.connect(settings.database_path) as db:
+        async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
             await db.execute(
                 "UPDATE players SET connection_status = 'online' WHERE id = ? AND team_id = ?",
                 (player_id, team_id)
@@ -98,7 +96,7 @@ class ConnectionManager:
                 del self._teams[team_id]
 
         # Update connection status in DB
-        async with aiosqlite.connect(settings.database_path) as db:
+        async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
             await db.execute(
                 "UPDATE players SET connection_status = 'offline' WHERE id = ? AND team_id = ?",
                 (player_id, team_id)
@@ -124,15 +122,15 @@ class ConnectionManager:
         self._admin_ws = None
         logger.info("Admin disconnected")
 
-    # ── SHOW_PROBLEMS Tracker ──────────────────────────────────────────────
+    # ── ASSIGNED Tracker ───────────────────────────────────────────────────
 
-    def mark_problems_shown(self, team_id: str):
-        """Mark that SHOW_PROBLEMS has been sent for this team."""
-        self._problems_shown.add(team_id)
+    def mark_assigned_sent(self, team_id: str):
+        """Mark that ASSIGNED has been sent to both players in this team."""
+        self._assigned_sent.add(team_id)
 
-    def should_show_problems(self, team_id: str) -> bool:
-        """Returns True only if SHOW_PROBLEMS has NOT been sent yet for this team."""
-        return team_id not in self._problems_shown
+    def should_send_assigned(self, team_id: str) -> bool:
+        """Returns True only if ASSIGNED has NOT been sent yet for this team."""
+        return team_id not in self._assigned_sent
 
     # ── Queries ────────────────────────────────────────────────────────────
 

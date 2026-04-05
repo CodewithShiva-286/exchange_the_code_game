@@ -22,7 +22,7 @@ def load_problems():
 
 async def seed_problems_to_db():
     """Insert loaded problems into the DB so foreign keys on team_problems work."""
-    async with aiosqlite.connect(settings.database_path) as db:
+    async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
         for p in _PROBLEM_CACHE.values():
             await db.execute(
                 """INSERT OR IGNORE INTO problems
