@@ -27,18 +27,38 @@ from ..core.timer_engine import start_team
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.post("/create-team", response_model=TeamCreateResponse)
-async def create_team(request: TeamCreateRequest, db: aiosqlite.Connection = Depends(get_db)):
-    """Create a new team. Team ID must be unique."""
-    async with db.execute(
-        "SELECT team_id FROM teams WHERE team_id = ?", (request.team_id,)
-    ) as cursor:
-        if await cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Team ID already exists")
+from typing import Optional
 
-    await db.execute("INSERT INTO teams (team_id) VALUES (?)", (request.team_id,))
+@router.post("/create-team", response_model=TeamCreateResponse)
+async def create_team(request: Optional[TeamCreateRequest] = None, db: aiosqlite.Connection = Depends(get_db)):
+    """Create a new team. Team ID must be unique. Auto-generates if not provided."""
+    team_id = request.team_id if request else None
+
+    # Auto-generate if omitted
+    if not team_id:
+        async with db.execute("SELECT COUNT(*) FROM teams") as cursor:
+            row = await cursor.fetchone()
+            count = row[0] if row else 0
+            
+        team_id = f"TEAM-{count + 1}"
+        
+        # Ensure unique by incrementing until we find an empty slot
+        while True:
+            async with db.execute("SELECT team_id FROM teams WHERE team_id = ?", (team_id,)) as cursor:
+                if not await cursor.fetchone():
+                    break
+            count += 1
+            team_id = f"TEAM-{count + 1}"
+    else:
+        async with db.execute(
+            "SELECT team_id FROM teams WHERE team_id = ?", (team_id,)
+        ) as cursor:
+            if await cursor.fetchone():
+                raise HTTPException(status_code=400, detail="Team ID already exists")
+
+    await db.execute("INSERT INTO teams (team_id) VALUES (?)", (team_id,))
     await db.commit()
-    return TeamCreateResponse(status="success", team_id=request.team_id)
+    return TeamCreateResponse(status="success", team_id=team_id)
 
 
 @router.post("/create-group", response_model=GroupCreateResponse)

@@ -15,7 +15,7 @@ from typing import List, Optional
 # ── Admin Endpoints ───────────────────────────────────────────────────────────
 
 class TeamCreateRequest(BaseModel):
-    team_id: str = Field(..., min_length=1, description="Unique alphanumeric team identifier")
+    team_id: Optional[str] = Field(None, description="Unique alphanumeric team identifier. If omitted, server auto-generates it.")
 
 class TeamCreateResponse(BaseModel):
     status: str

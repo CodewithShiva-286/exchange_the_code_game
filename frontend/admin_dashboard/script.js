@@ -152,9 +152,13 @@ function renderTeams(teams) {
 
       card.innerHTML = `
          <div class="card-header">
-            <h3>${escapeHtml(team.team_id)}</h3>
+            <h3 style="display:flex; align-items:center; gap:8px;">
+                ${escapeHtml(team.team_id)}
+                <button class="btn btn-outline" style="padding:2px 6px; font-size:10px;" onclick="navigator.clipboard.writeText('${escapeHtml(team.team_id)}'); showToast('Team ID copied!', 'success')">Copy</button>
+            </h3>
             <span class="phase-badge phase-${phase}">${phaseLabel}</span>
          </div>
+         <p style="font-size: 11px; color: var(--text-secondary); margin-top: -12px; margin-bottom: 12px;">Share this Team ID with players</p>
 
          <div class="players">${playersHTML}</div>
 
@@ -244,7 +248,17 @@ function escapeHtml(str) {
    return div.innerHTML;
 }
 
-// ── Navigation ──────────────────────────────────────────────────────────────
+// ── Navigation & Actions ───────────────────────────────────────────────────
+document.getElementById("createTeamBtn").addEventListener("click", async () => {
+   try {
+      await apiFetch("/admin/create-team", { method: "POST" });
+      showToast("Team created successfully!", "success");
+      await fetchAndRender();
+   } catch (err) {
+      showModal("⚠️ Error", err.message);
+   }
+});
+
 document.getElementById("manageBtn").addEventListener("click", () => {
    window.location.href = "manage-assign.html";
 });
