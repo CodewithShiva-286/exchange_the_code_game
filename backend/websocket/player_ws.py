@@ -27,7 +27,7 @@ from .manager import manager
 from .events import (
     build_connected, build_partner_joined, build_assigned,
     build_session_restore, build_error, build_pong, PING,
-    DRAFT_SAVE, FINAL_SUBMIT
+    DRAFT_SAVE, FINAL_SUBMIT, RUN_CODE
 )
 from ..config import settings
 from ..problems.problem_loader import get_problem
@@ -37,6 +37,7 @@ router = APIRouter()
 
 from ..core.team_manager import get_player_info, get_partner_info, get_assigned_problem, get_team_status
 from ..core.submission_handler import receive_draft, receive_final
+from ..runner.execution_queue import submit_task, ExecutionTask
 
 
 async def _send_assigned_to_team(team_id: str):
@@ -190,6 +191,45 @@ async def player_websocket(
                             team_id, player_id, 
                             build_error("SUBMIT_FAILED", "Failed to save final submission.")
                         )
+
+            elif event_type == RUN_CODE:
+                data = message.get("data", {})
+                code = data.get("code", "")
+                language = data.get("language", "python")
+                problem_id = data.get("problem_id", "")
+
+                # Fetch only visible (sample) test cases for this problem
+                import aiosqlite as _aiosqlite
+                test_cases = []
+                async with _aiosqlite.connect(settings.database_path, timeout=15.0) as db:
+                    async with db.execute(
+                        "SELECT id, input_data, expected_output FROM test_cases "
+                        "WHERE problem_id = ? AND is_visible = 1",
+                        (problem_id,)
+                    ) as cursor:
+                        async for row in cursor:
+                            test_cases.append({
+                                "id": row[0],
+                                "input_data": row[1],
+                                "expected_output": row[2],
+                            })
+
+                if not test_cases:
+                    # No sample test cases → just run with empty stdin for quick feedback
+                    test_cases = [{"id": 0, "input_data": "", "expected_output": ""}]
+
+                task = ExecutionTask(
+                    task_type="run",
+                    team_id=team_id,
+                    player_id=player_id,
+                    code=code,
+                    language=language,
+                    test_cases=test_cases,
+                    problem_id=problem_id,
+                )
+                # Fire-and-forget: don't block the WS loop
+                import asyncio as _asyncio
+                _asyncio.create_task(submit_task(task))
 
             else:
                 await manager.send_to_player(

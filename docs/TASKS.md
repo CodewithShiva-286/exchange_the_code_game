@@ -107,16 +107,21 @@
 
 ---
 
-## ⏳ Chunk 5: Code Execution Engine
+## ✅ Chunk 5: Code Execution Engine
 
-- [ ] `runner/base_runner.py` — `RunResult` dataclass
-- [ ] `runner/sandbox.py` — subprocess limits, temp file cleanup
-- [ ] `runner/python_runner.py` — per-test-case execution
-- [ ] `runner/cpp_runner.py` — compile + execute
-- [ ] Trigger execution after Part B final submit + validation
-- [ ] Populate `execution_results` table
-- [ ] Broadcast `RESULT` to team + admin
-- [ ] Scoring: `(passed/total * 100) + time_bonus`
+- [x] `runner/base_runner.py` — `RunResult`, `TestCaseResult`, `RunStatus` dataclass/enum
+- [x] `runner/sandbox.py` — blocklist scanning (Python + C++), subprocess isolation with timeout, temp dir management
+- [x] `runner/python_runner.py` — write to temp, execute via subprocess, capture stdout/stderr, safety scan
+- [x] `runner/cpp_runner.py` — compile with g++, execute binary, graceful missing-compiler handling
+- [x] `runner/execution_queue.py` — async queue with background worker, output normalization, per-test-case execution
+- [x] `RUN_CODE` WS event — player hits "Run", sample test cases only, `RUN_OUTPUT` sent back
+- [x] `FINAL` execution mode — triggered once per team:problem, stores result in `execution_results` DB table
+- [x] Final dedup — prevents duplicate execution per team:problem pair
+- [x] Populate `execution_results` table with score, breakdown JSON, execution time
+- [x] Broadcast `RESULT` to team via WS after final evaluation
+- [x] Scoring: `(passed_count / total * 100)`
+- [x] Dangerous code blocking: os, subprocess, eval, exec, open, socket, ctypes, etc.
+- [x] Strict test suite: 19 passed, 1 skipped (no g++), covering all edge cases
 
 ---
 

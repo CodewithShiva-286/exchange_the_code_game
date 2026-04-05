@@ -19,6 +19,7 @@ LOCK_AND_SUBMIT = "LOCK_AND_SUBMIT"  # Part A timer expired; freeze editor
 WAIT_FOR_SWAP   = "WAIT_FOR_SWAP"    # 10s buffer countdown after lock
 START_PART_B    = "START_PART_B"     # Partner's Part A code + Part B prompt
 END_GAME        = "END_GAME"         # Part B timer expired; freeze editor, execution starts
+RUN_OUTPUT      = "RUN_OUTPUT"       # Result of a RUN (sample test cases) request
 RESULT          = "RESULT"           # Final score + test case breakdown
 ERROR           = "ERROR"            # Server error; includes code + retry flag
 PONG            = "PONG"             # Heartbeat response
@@ -28,6 +29,7 @@ PONG            = "PONG"             # Heartbeat response
 PING         = "PING"          # Heartbeat; server responds with PONG
 DRAFT_SAVE   = "DRAFT_SAVE"    # Auto-save during coding (every 10s)
 FINAL_SUBMIT = "FINAL_SUBMIT"  # Final code submission on lock
+RUN_CODE     = "RUN_CODE"      # Run code against sample test cases
 
 # ─── Admin Events ─────────────────────────────────────────────────────────────
 
