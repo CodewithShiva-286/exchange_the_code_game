@@ -21,7 +21,7 @@ from ..models import (
 )
 from ..problems.problem_loader import get_problem
 from ..websocket.manager import manager
-from ..core.team_manager import get_all_teams
+from ..core.team_manager import get_all_teams, get_team_dashboard_data
 from ..core.timer_engine import start_team
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -91,8 +91,6 @@ async def assign_group(request: GroupAssignRequest, db: aiosqlite.Connection = D
         team_row = await cursor.fetchone()
         if not team_row:
             raise HTTPException(status_code=404, detail="Team not found")
-        if team_row[1] is not None:
-            raise HTTPException(status_code=400, detail="Team already has a group assigned")
 
     # Validate group exists and has exactly 2 problems
     async with db.execute(
@@ -173,3 +171,42 @@ async def start_round(db: aiosqlite.Connection = Depends(get_db)):
         start_team(team_id)
     
     return StandardResponse(status="success", message="Game started for all teams.")
+
+
+@router.get("/groups")
+async def get_groups(db: aiosqlite.Connection = Depends(get_db)):
+    """
+    Returns all available problem groups for the admin dropdown.
+    Lightweight: just group_id + problem IDs.
+    """
+    async with db.execute("SELECT group_id FROM groups ORDER BY group_id") as cursor:
+        group_rows = await cursor.fetchall()
+
+    result = []
+    for row in group_rows:
+        gid = row[0]
+        async with db.execute(
+            "SELECT problem_id, position FROM group_problems WHERE group_id = ? ORDER BY position",
+            (gid,)
+        ) as cursor:
+            problems = await cursor.fetchall()
+
+        result.append({
+            "group_id": gid,
+            "problems": [
+                {"problem_id": p[0], "position": p[1]}
+                for p in problems
+            ],
+        })
+
+    return result
+
+
+@router.get("/teams")
+async def get_teams():
+    """
+    Returns full dashboard data for all teams.
+    Includes group assignment, player slots, and live WS connection status.
+    """
+    data = await get_team_dashboard_data()
+    return data

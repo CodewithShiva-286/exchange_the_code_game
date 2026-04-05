@@ -113,3 +113,61 @@ async def get_all_teams() -> list[str]:
         async with db.execute("SELECT team_id FROM teams") as cursor:
             rows = await cursor.fetchall()
             return [row[0] for row in rows]
+
+
+async def get_team_dashboard_data() -> list[dict]:
+    """
+    Build full dashboard data for the admin UI.
+
+    Returns a list of dicts, each containing:
+      - team_id, group_id, status, current_phase
+      - players: list of {slot, name, connected}
+
+    Uses the WS ConnectionManager for live connection status.
+    """
+    from ..websocket.manager import manager  # deferred to avoid circular import
+
+    async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
+        # 1. Fetch all teams
+        async with db.execute(
+            "SELECT team_id, group_id, status, current_phase FROM teams ORDER BY team_id"
+        ) as cursor:
+            teams = await cursor.fetchall()
+
+        result = []
+        for team_row in teams:
+            team_id = team_row[0]
+            group_id = team_row[1]
+            status = team_row[2]
+            phase = team_row[3]
+
+            # 2. Fetch players for this team
+            async with db.execute(
+                "SELECT id, name, player_slot FROM players WHERE team_id = ? ORDER BY player_slot",
+                (team_id,)
+            ) as cursor:
+                player_rows = await cursor.fetchall()
+
+            players = []
+            for p_row in player_rows:
+                p_id = p_row[0]
+                p_name = p_row[1]
+                p_slot = p_row[2]
+                # Check live WS connection (not just DB column)
+                connected = manager.is_player_connected(team_id, p_id)
+                players.append({
+                    "slot": p_slot,
+                    "name": p_name,
+                    "player_id": p_id,
+                    "connected": connected,
+                })
+
+            result.append({
+                "team_id": team_id,
+                "group_id": group_id,
+                "status": status,
+                "current_phase": phase,
+                "players": players,
+            })
+
+        return result
