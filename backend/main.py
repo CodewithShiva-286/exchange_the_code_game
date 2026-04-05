@@ -4,13 +4,16 @@ from .database import init_db
 from .problems.problem_loader import load_problems, seed_problems_to_db
 from .routers import admin, player
 from .websocket import player_ws, admin_ws
+from .runner.execution_queue import start_worker, stop_worker
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     load_problems()
     await init_db()
     await seed_problems_to_db()
+    start_worker()
     yield
+    stop_worker()
 
 app = FastAPI(title="Exchange The Code", lifespan=lifespan)
 
