@@ -1,14 +1,22 @@
 """
-Player WebSocket endpoint: /ws/{team_id}/{player_id}?token={session_token}
+websocket/player_ws.py — v2 Player WebSocket endpoint
+
+/ws/{team_id}/{player_id}?token={session_token}
 
 Responsibilities:
 - Validate session token BEFORE accepting (reject immediately on failure)
-- Close duplicate connections (old WS replaced by new)
+- Close duplicate connections (old WS replaced with new)
 - Register connection in manager
-- SHOW_PROBLEMS auto-trigger ONCE per team when both connect
-- SESSION_RESTORE on reconnect
+- Send ASSIGNED (individually per player) ONCE when both players connect
+- SESSION_RESTORE on reconnect (includes assignment, not selection state)
 - PING → PONG heartbeat
 - Clean disconnect with stale-reference protection
+
+v2 changes:
+- REMOVED: SHOW_PROBLEMS broadcast
+- REMOVED: all chosen_problem_id references
+- ADDED: ASSIGNED sent individually using player_slot → group_problems.position
+- ADDED: assignment included in SESSION_RESTORE
 """
 
 import json
@@ -17,8 +25,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 import aiosqlite
 from .manager import manager
 from .events import (
-    build_connected, build_partner_joined, build_show_problems,
-    build_session_restore, build_error, build_pong, PING
+    build_connected, build_partner_joined, build_assigned,
+    build_session_restore, build_error, build_pong, PING,
+    DRAFT_SAVE, FINAL_SUBMIT, RUN_CODE
 )
 from ..config import settings
 from ..problems.problem_loader import get_problem
@@ -26,84 +35,65 @@ from ..problems.problem_loader import get_problem
 logger = logging.getLogger("ws.player")
 router = APIRouter()
 
-
-async def _get_player_info(player_id: int, team_id: str) -> dict | None:
-    """Fetch player name and basic info from DB."""
-    async with aiosqlite.connect(settings.database_path) as db:
-        async with db.execute(
-            "SELECT id, name, team_id, connection_status, chosen_problem_id FROM players WHERE id = ? AND team_id = ?",
-            (player_id, team_id)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if row:
-                return {
-                    "id": row[0],
-                    "name": row[1],
-                    "team_id": row[2],
-                    "connection_status": row[3],
-                    "chosen_problem_id": row[4],
-                }
-    return None
+from ..core.team_manager import get_player_info, get_partner_info, get_assigned_problem, get_team_status
+from ..core.submission_handler import receive_draft, receive_final
+from ..runner.execution_queue import submit_task, ExecutionTask
 
 
-async def _get_team_problems_list(team_id: str) -> list:
-    """Fetch assigned problems for a team as list of dicts."""
-    async with aiosqlite.connect(settings.database_path) as db:
-        async with db.execute(
-            "SELECT problem_id FROM team_problems WHERE team_id = ?",
-            (team_id,)
-        ) as cursor:
-            rows = await cursor.fetchall()
+async def _send_assigned_to_team(team_id: str):
+    """
+    Send ASSIGNED individually to each connected player in the team.
+    Slot 1 → problem at position 1; Slot 2 → problem at position 2.
+    Each player receives ONLY their own assigned problem + partner's title.
+    Called exactly once per team (guarded by manager.should_send_assigned).
+    """
+    conns = manager.get_team_connections(team_id)
+    for pid in conns:
+        player_info = await get_player_info(pid, team_id)
+        if not player_info:
+            continue
 
-    problems = []
-    for row in rows:
-        p = get_problem(row[0])
-        if p:
-            problems.append({
-                "id": p.id,
-                "title": p.title,
-                "description": p.description,
-            })
-    return problems
+        slot = player_info["player_slot"]
+        partner_slot = 3 - slot  # slot 1 → partner slot 2, slot 2 → partner slot 1
 
+        assigned_problem = await get_assigned_problem(team_id, slot)
+        partner_problem = await get_assigned_problem(team_id, partner_slot)
 
-async def _get_partner_info(team_id: str, player_id: int) -> dict | None:
-    """Fetch the partner player in the same team."""
-    async with aiosqlite.connect(settings.database_path) as db:
-        async with db.execute(
-            "SELECT id, name, connection_status, chosen_problem_id FROM players WHERE team_id = ? AND id != ?",
-            (team_id, player_id)
-        ) as cursor:
-            row = await cursor.fetchone()
-            if row:
-                return {
-                    "id": row[0],
-                    "name": row[1],
-                    "connection_status": row[2],
-                    "chosen_problem_id": row[3],
-                }
-    return None
+        if not assigned_problem:
+            logger.warning(f"No assigned problem found for player {pid} (slot {slot}) in team {team_id}")
+            continue
+
+        partner_title = partner_problem["title"] if partner_problem else "Unknown"
+
+        await manager.send_to_player(
+            team_id, pid,
+            build_assigned(slot, assigned_problem, partner_title)
+        )
 
 
 async def _build_restore_data(team_id: str, player_id: int) -> dict:
-    """Build SESSION_RESTORE data from current DB state."""
-    player_info = await _get_player_info(player_id, team_id)
-    partner_info = await _get_partner_info(team_id, player_id)
-    problems = await _get_team_problems_list(team_id)
+    """Build SESSION_RESTORE payload from DB state (v2: includes assignment, not selection)."""
+    player_info = await get_player_info(player_id, team_id)
+    partner_info = await get_partner_info(team_id, player_id)
 
-    # Determine current phase based on state
-    # For Chunk 2 we only know: "waiting" or "selection"
+    assigned_problem = None
+    if player_info and player_info["player_slot"]:
+        assigned_problem = await get_assigned_problem(team_id, player_info["player_slot"])
+
+    # Phase inference (Chunk 2 scope: only waiting or assigned)
     phase = "waiting"
     if partner_info and partner_info["connection_status"] == "online":
-        phase = "selection"
+        phase = "assigned"
 
     return {
         "player": player_info,
         "partner": partner_info,
-        "problems": problems,
+        "assigned_problem": assigned_problem,
         "phase": phase,
     }
 
+
+# ── WebSocket endpoint ─────────────────────────────────────────────────────────
 
 @router.websocket("/ws/{team_id}/{player_id}")
 async def player_websocket(
@@ -115,15 +105,14 @@ async def player_websocket(
     # ── 1. Validate session token BEFORE any accept ────────────────────────
     is_valid = await manager.validate_session(team_id, player_id, token)
     if not is_valid:
-        # Must accept before we can close with a code on most ASGI servers
         await websocket.accept()
         await websocket.close(code=4001, reason="Invalid session token")
         return
 
-    # ── 2. Connect (handles duplicate detection + old WS close internally) ─
+    # ── 2. Connect (handles duplicate: old WS force-closed before new accepted)
     is_reconnect = await manager.connect_player(team_id, player_id, websocket)
 
-    player_info = await _get_player_info(player_id, team_id)
+    player_info = await get_player_info(player_id, team_id)
     if not player_info:
         await websocket.close(code=4002, reason="Player not found")
         return
@@ -135,7 +124,7 @@ async def player_websocket(
             build_connected(player_id, team_id, player_info["name"])
         )
 
-        # ── 4. Handle reconnect → SESSION_RESTORE ─────────────────────────
+        # ── 4. Reconnect → SESSION_RESTORE  ───────────────────────────────
         if is_reconnect:
             restore_data = await _build_restore_data(team_id, player_id)
             await manager.send_to_player(
@@ -143,19 +132,14 @@ async def player_websocket(
                 build_session_restore(restore_data["phase"], restore_data)
             )
         else:
-            # ── 5. First-time connect: check if both players are in ────────
+            # ── 5. First-time connect ──────────────────────────────────────
             if manager.is_team_full(team_id):
-                # Send SHOW_PROBLEMS only ONCE per team
-                if manager.should_show_problems(team_id):
-                    problems = await _get_team_problems_list(team_id)
-                    if problems:
-                        await manager.broadcast_to_team(
-                            team_id,
-                            build_show_problems(problems)
-                        )
-                        manager.mark_problems_shown(team_id)
+                # Both players now connected → send ASSIGNED once per team
+                if manager.should_send_assigned(team_id):
+                    await _send_assigned_to_team(team_id)
+                    manager.mark_assigned_sent(team_id)
 
-                # Notify the existing partner that new player joined
+                # Notify existing partner of new connection
                 for pid in manager.get_team_connections(team_id):
                     if pid != player_id:
                         await manager.send_to_player(
@@ -180,8 +164,73 @@ async def player_websocket(
             if event_type == PING:
                 await manager.send_to_player(team_id, player_id, build_pong())
 
-            # Other events (CHOOSE_PROBLEM, DRAFT_SAVE, FINAL_SUBMIT)
-            # will be routed in Chunk 3 and Chunk 4.
+            elif event_type == DRAFT_SAVE:
+                data = message.get("data", {})
+                problem_id = data.get("problem_id")
+                code = data.get("code", "")
+                if problem_id:
+                    receive_draft(player_id, problem_id, code)
+
+            elif event_type == FINAL_SUBMIT:
+                data = message.get("data", {})
+                problem_id = data.get("problem_id")
+                code = data.get("code", "")
+                team_status = await get_team_status(team_id)
+                
+                if not team_status or team_status["current_phase"] not in ("part_a", "part_b"):
+                    await manager.send_to_player(
+                        team_id, player_id, 
+                        build_error("INVALID_PHASE", "Cannot submit outside of active timer phases.")
+                    )
+                    continue
+                    
+                if problem_id:
+                    success = await receive_final(player_id, problem_id, code, team_status["current_phase"])
+                    if not success:
+                        await manager.send_to_player(
+                            team_id, player_id, 
+                            build_error("SUBMIT_FAILED", "Failed to save final submission.")
+                        )
+
+            elif event_type == RUN_CODE:
+                data = message.get("data", {})
+                code = data.get("code", "")
+                language = data.get("language", "python")
+                problem_id = data.get("problem_id", "")
+
+                # Fetch only visible (sample) test cases for this problem
+                import aiosqlite as _aiosqlite
+                test_cases = []
+                async with _aiosqlite.connect(settings.database_path, timeout=15.0) as db:
+                    async with db.execute(
+                        "SELECT id, input_data, expected_output FROM test_cases "
+                        "WHERE problem_id = ? AND is_visible = 1",
+                        (problem_id,)
+                    ) as cursor:
+                        async for row in cursor:
+                            test_cases.append({
+                                "id": row[0],
+                                "input_data": row[1],
+                                "expected_output": row[2],
+                            })
+
+                if not test_cases:
+                    # No sample test cases → just run with empty stdin for quick feedback
+                    test_cases = [{"id": 0, "input_data": "", "expected_output": ""}]
+
+                task = ExecutionTask(
+                    task_type="run",
+                    team_id=team_id,
+                    player_id=player_id,
+                    code=code,
+                    language=language,
+                    test_cases=test_cases,
+                    problem_id=problem_id,
+                )
+                # Fire-and-forget: don't block the WS loop
+                import asyncio as _asyncio
+                _asyncio.create_task(submit_task(task))
+
             else:
                 await manager.send_to_player(
                     team_id, player_id,
@@ -189,7 +238,6 @@ async def player_websocket(
                 )
 
     except WebSocketDisconnect:
-        # Pass `websocket` so manager only removes if it's the CURRENT reference
         await manager.disconnect_player(team_id, player_id, websocket)
     except Exception as e:
         logger.error(f"Player WS error: {e}")

@@ -1,7 +1,18 @@
+"""
+models.py — v2 Pydantic request/response models
+
+Changes from v1:
+- REMOVED: ProblemAssignRequest (assign-problems endpoint gone)
+- ADDED:   GroupCreateRequest, GroupAssignRequest
+- UPDATED: JoinResponse now includes player_slot
+- ADDED:   AssignedProblemDetail (what a player receives in ASSIGNED event)
+"""
+
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-# --- ADMIN ENDPOINTS ---
+
+# ── Admin Endpoints ───────────────────────────────────────────────────────────
 
 class TeamCreateRequest(BaseModel):
     team_id: str = Field(..., min_length=1, description="Unique alphanumeric team identifier")
@@ -10,15 +21,37 @@ class TeamCreateResponse(BaseModel):
     status: str
     team_id: str
 
-class ProblemAssignRequest(BaseModel):
-    team_id: str = Field(..., min_length=1, description="Team ID to assign problems to")
-    problem_ids: List[str] = Field(..., min_length=2, max_length=2, description="Exactly 2 problem IDs per team")
+class GroupCreateRequest(BaseModel):
+    group_id: str = Field(..., min_length=1, description="Unique group identifier (e.g. GROUP-A)")
+    problem_ids: List[str] = Field(
+        ...,
+        min_length=2,
+        max_length=2,
+        description="Exactly 2 problem IDs: [position_1_problem, position_2_problem]"
+    )
+
+class GroupCreateResponse(BaseModel):
+    status: str
+    group_id: str
+
+class GroupAssignRequest(BaseModel):
+    team_id: str = Field(..., min_length=1, description="Team to assign the group to")
+    group_id: str = Field(..., min_length=1, description="Group to assign")
+
+class TeamReadyStatus(BaseModel):
+    team_id: str
+    connected_players: int
+    ready: bool
+
+class ReadyCheckResponse(BaseModel):
+    teams: List[TeamReadyStatus]
 
 class StandardResponse(BaseModel):
     status: str
     message: Optional[str] = None
 
-# --- PLAYER ENDPOINTS ---
+
+# ── Player Endpoints ──────────────────────────────────────────────────────────
 
 class JoinRequest(BaseModel):
     team_id: str = Field(..., min_length=1, description="Team ID to join")
@@ -29,6 +62,10 @@ class JoinResponse(BaseModel):
     session_token: str
     team_id: str
     player_id: int
+    player_slot: int  # 1 = first joiner, 2 = second joiner
+
+
+# ── Problem Models ────────────────────────────────────────────────────────────
 
 class ProblemSummary(BaseModel):
     id: str
@@ -41,6 +78,12 @@ class ProblemDetail(ProblemSummary):
     interface_stub: str
     language: str
 
-class TeamProblemsResponse(BaseModel):
-    team_id: str
-    problems: List[ProblemSummary]
+class AssignedProblemDetail(BaseModel):
+    """Sent to a player in the ASSIGNED WS event — their specific problem."""
+    id: str
+    title: str
+    description: str
+    part_a_prompt: str
+    interface_stub: str
+    language: str
+    # Part B prompt intentionally omitted (revealed only at swap)
