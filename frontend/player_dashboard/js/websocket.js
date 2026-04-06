@@ -53,6 +53,7 @@ function connectWS() {
 
 function wsSend(event, data) {
     if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log("WS SEND:", event, data);
         ws.send(JSON.stringify({ event, data }));
     } else {
         console.warn("WebSocket not open, cannot send", event);

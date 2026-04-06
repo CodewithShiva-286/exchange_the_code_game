@@ -135,6 +135,13 @@ async def assign_group(request: GroupAssignRequest, db: aiosqlite.Connection = D
         (request.group_id, request.team_id)
     )
     await db.commit()
+    
+    # Immediately push ASSIGNED to connected players of this team
+    from ..websocket.player_ws import _send_assigned_to_team
+    from ..websocket.manager import manager
+    if manager.is_team_full(request.team_id):
+        await _send_assigned_to_team(request.team_id)
+        manager.mark_assigned_sent(request.team_id)
 
     return StandardResponse(status="success", message=f"Group '{request.group_id}' assigned to team '{request.team_id}'")
 

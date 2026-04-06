@@ -34,9 +34,13 @@ const UI = {
 
 const Actions = {
     runCode: () => {
+        console.log("RUN CLICKED");
         const code = EditorWrap.getValue();
         const lang = document.getElementById('languageSelect').value;
-        if(!code || !currentProblemId) return;
+        if(!code || !currentProblemId) {
+            console.warn("RUN aborted: code or currentProblemId is missing. problemId:", currentProblemId);
+            return;
+        }
         ResultManager.clear();
         ResultManager.append(`<span style="color:#60a5fa;">Running code...</span>`);
         wsSend("RUN_CODE", { code: code, language: lang, problem_id: currentProblemId });
