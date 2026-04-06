@@ -58,6 +58,13 @@ joinForm.addEventListener('submit', async (e) => {
             player_name: name
         };
         
+        // Clear old draft code strings to prevent persisting old code across games
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('draft_')) {
+                localStorage.removeItem(key);
+            }
+        });
+        
         localStorage.setItem('session', JSON.stringify(sessionData));
         showStatus(`Joined as P${data.player_slot}! Redirecting...`, 'success');
         

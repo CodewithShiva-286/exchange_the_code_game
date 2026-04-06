@@ -102,11 +102,12 @@ def build_wait_for_swap(remaining_seconds: int) -> dict:
     return build_event(WAIT_FOR_SWAP, {"remaining_seconds": remaining_seconds})
 
 
-def build_start_part_b(duration_seconds: int, partner_code: str, part_b_prompt: str) -> dict:
+def build_start_part_b(duration_seconds: int, partner_code: str, part_b_prompt: str, full_problem: dict) -> dict:
     return build_event(START_PART_B, {
         "duration_seconds": duration_seconds,
         "partner_code": partner_code,
-        "part_b_prompt": part_b_prompt
+        "part_b_prompt": part_b_prompt,
+        "full_problem": full_problem
     })
 
 

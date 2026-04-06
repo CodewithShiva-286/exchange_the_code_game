@@ -159,11 +159,15 @@ async def _process_task(task: ExecutionTask):
             result = await _run_against_test_cases(
                 task.code, task.language, task.test_cases
             )
+            print("TASK EXECUTED:", result)
+            
             # Send RUN_OUTPUT to the specific player
+            payload = build_event("RUN_OUTPUT", result.to_dict())
+            print("RUN_OUTPUT SENT:", payload)
             await manager.send_to_player(
                 task.team_id,
                 task.player_id,
-                build_event("RUN_OUTPUT", result.to_dict()),
+                payload,
             )
             task.future.set_result(result)
 
@@ -184,7 +188,8 @@ async def _process_task(task: ExecutionTask):
             # Compute score
             total = len(result.test_results)
             passed_count = sum(1 for r in result.test_results if r.passed)
-            score = (passed_count / total * 100) if total > 0 else 0.0
+            failed_count = total - passed_count
+            score = (passed_count * 10) - (failed_count * 2)
 
             # Store in DB
             breakdown_json = json.dumps([
@@ -215,6 +220,27 @@ async def _process_task(task: ExecutionTask):
                         round(result.time_taken, 4),
                     ),
                 )
+                
+                # Update team_scores
+                async with db.execute(
+                    "SELECT round, total_score FROM team_scores WHERE team_id = ? ORDER BY round DESC LIMIT 1",
+                    (task.team_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    prev_round = row[0] if row else 0
+                    prev_total = row[1] if row else 0
+                
+                new_round = prev_round + 1
+                new_total = prev_total + score
+
+                await db.execute(
+                    """
+                    INSERT INTO team_scores (team_id, round, score, total_score)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (task.team_id, new_round, score, new_total)
+                )
+
                 await db.commit()
 
             # Broadcast RESULT to team

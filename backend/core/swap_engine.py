@@ -58,13 +58,17 @@ async def perform_swap(team_id: str):
         partner_code = slot_submissions[partner_slot]["code"]
         
         part_b_prompt = "Missing Part B prompt."
+        full_problem_data = {}
         partner_prob_info = await get_assigned_problem(team_id, partner_slot)
         if partner_prob_info:
+            full_problem_data = partner_prob_info
             full_prob = get_problem(partner_prob_info["id"])
             if full_prob:
                 part_b_prompt = full_prob.part_b_prompt
         
-        await manager.send_to_player(
-            team_id, pid, 
-            build_start_part_b(part_b_duration, partner_code, part_b_prompt)
-        )
+        print(f"[{team_id}] SWAP DEBUG for player {pid} (target slot {partner_slot}):", full_problem_data)
+
+        payload = build_start_part_b(part_b_duration, partner_code, part_b_prompt, full_problem_data)
+        print(f"[{team_id}] WS START_PART_B PAYLOAD:", payload)
+
+        await manager.send_to_player(team_id, pid, payload)

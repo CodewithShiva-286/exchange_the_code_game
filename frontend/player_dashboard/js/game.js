@@ -32,15 +32,29 @@ const UI = {
     }
 };
 
+function sanitizeCode(code, language) {
+    code = code.replaceAll("===== START PART B BELOW =====", "");
+
+    if (language === "python") {
+        code = code.replaceAll("//", "#");
+    }
+
+    return code;
+}
+
 const Actions = {
     runCode: () => {
         console.log("RUN CLICKED");
-        const code = EditorWrap.getValue();
+        let code = EditorWrap.getValue();
         const lang = document.getElementById('languageSelect').value;
         if(!code || !currentProblemId) {
             console.warn("RUN aborted: code or currentProblemId is missing. problemId:", currentProblemId);
             return;
         }
+
+        // Sanitize code before sending
+        code = sanitizeCode(code, lang);
+
         ResultManager.clear();
         ResultManager.append(`<span style="color:#60a5fa;">Running code...</span>`);
         wsSend("RUN_CODE", { code: code, language: lang, problem_id: currentProblemId });
@@ -54,8 +68,13 @@ const Actions = {
 };
 
 function actuallySubmitCode() {
-    const code = EditorWrap.getValue();
+    let code = EditorWrap.getValue();
     if(!code || !currentProblemId) return;
+
+    // Sanitize code
+    const lang = document.getElementById('languageSelect').value;
+    code = sanitizeCode(code, lang);
+
     submitted = true;
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('runBtn').disabled = true;
@@ -119,12 +138,20 @@ function HandleWSEvent(msg) {
             StorageManager.stopDrafting();
             break;
         case "START_PART_B":
+            console.log("START_PART_B EVENT:", data);
             currentPhase = 'part_b';
             submitted = false;
             UI.setPhaseText("Part B");
             
-            // Set Part B prompt
-            document.getElementById('partBPrompt').textContent = data.part_b_prompt || "Complete Part B!";
+            // Set Part B full problem data
+            if (data.full_problem && data.full_problem.id) {
+                currentProblemId = data.full_problem.id;
+                UI.setProblemInfo(data.full_problem.title, data.full_problem.description);
+                UI.setParts(data.full_problem.part_a_prompt, data.part_b_prompt || "Complete Part B!");
+            } else {
+                document.getElementById('partBPrompt').textContent = data.part_b_prompt || "Complete Part B!";
+            }
+            
             UI.showPart("both");
             
             // Partner code

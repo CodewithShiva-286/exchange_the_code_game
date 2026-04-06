@@ -9,6 +9,7 @@ async def reset_db():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("BEGIN TRANSACTION")
         try:
+            await db.execute("DELETE FROM team_scores")
             await db.execute("DELETE FROM execution_results")
             await db.execute("DELETE FROM submissions")
             await db.execute("DELETE FROM players")

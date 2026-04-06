@@ -101,9 +101,9 @@ async def get_assigned_problem(team_id: str, player_slot: int) -> dict | None:
         "title": problem.title,
         "description": problem.description,
         "part_a_prompt": problem.part_a_prompt,
+        "part_b_prompt": problem.part_b_prompt,
         "interface_stub": problem.interface_stub,
         "language": problem.language,
-        # part_b_prompt intentionally withheld until swap
     }
 
 

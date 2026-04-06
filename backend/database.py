@@ -147,4 +147,16 @@ async def init_db():
             )
         """)
 
+        # ── Team Scores table (NEW) ───────────────────────────────────────
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS team_scores (
+                team_id TEXT,
+                round INTEGER,
+                score INTEGER,
+                total_score INTEGER,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (team_id) REFERENCES teams (team_id) ON DELETE CASCADE
+            )
+        """)
+
         await db.commit()
