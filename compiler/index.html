@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="./static/monaco-editor/min/vs/loader.js"></script>
+
+<script>
+    // 2. Configure the 'vs' path to point to your local static folder
+    require.config({ paths: { 'vs': './static/monaco-editor/min/vs' }});
+
+    let editor;
+
+    require(['vs/editor/editor.main'], function() {
+        editor = monaco.editor.create(document.getElementById('editor-container'), {
+            value: "// Start coding Part A here...",
+            language: 'cpp', // or 'python'
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontSize: 18,
+            readOnly: false // Start locked until the server says GO
+        });
+    });
+</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exchange Code Game</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <!-- Session Guard: redirect to join page if not logged in -->
+  <script>
+    (function() {
+      const session = localStorage.getItem('session');
+      if (!session) {
+        window.location.href = 'join.html';
+        return;
+      }
+      try {
+        const data = JSON.parse(session);
+        if (!data.session_token || !data.team_id) {
+          localStorage.removeItem('session');
+          window.location.href = 'join.html';
+        }
+      } catch (e) {
+        localStorage.removeItem('session');
+        window.location.href = 'join.html';
+      }
+    })();
+  </script>
+
+  <div class="app-container">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <h1>Exchange Code</h1>
+        <p id="brandInfo">Loading session...</p>
+      </div>
+
+      <div class="top-center">
+        <div class="status-box">
+          Current Phase: <span class="highlight" id="phaseLabel">Part A</span>
+        </div>
+
+        <div class="timer-box">
+          Round Timer: <span class="highlight" id="timer">--:--</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <select class="language-select">
+          <option>C++</option>
+          <option>Python</option>
+        </select>
+
+        <button class="btn run-btn" id="runBtn">Run</button>
+        <button class="btn submit-btn" id="submitBtn">Submit</button>
+        <button class="btn switch-btn" id="switchBtn" disabled>Switch Code</button>
+        <button class="btn logout-btn" id="logoutBtn" title="Leave game">⏻</button>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="main-layout">
+
+      <!-- Problem Statement -->
+      <section class="problem-panel">
+        <div class="problem-header">
+          <span class="problem-tag">Problem Statement</span>
+          <span class="part-tag" id="partBadge">PART A</span>
+        </div>
+
+        <!-- Problem Selector -->
+        <div class="problem-selector">
+          <label for="problemSelect">Select Problem:</label>
+          <select id="problemSelect" class="problem-select">
+            <option value="p001">p001 — Two Sum</option>
+            <option value="p002">p002 — Palindrome Checker</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Title -->
+        <h2 class="problem-title" id="problem-title">Loading...</h2>
+
+        <!-- Dynamic Description -->
+        <p class="problem-text" id="problem-description">Fetching problem data...</p>
+
+        <!-- Dynamic Part A -->
+        <div class="phase-block" id="partA-block">
+          <h3>Part A</h3>
+          <p id="partA">Loading Part A...</p>
+        </div>
+
+        <!-- Dynamic Part B -->
+        <div class="phase-block" id="partB-block">
+          <h3>Part B</h3>
+          <p id="partB">Loading Part B...</p>
+        </div>
+
+        <div class="note-box">
+          <p>
+            Use the <strong>Switch Code</strong> option after the timer ends to simulate the
+            exchange step between teammates.
+          </p>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="problem-loading" id="problemLoading">
+          <div class="spinner"></div>
+          <span>Fetching problem…</span>
+        </div>
+      </section>
+
+      <!-- Code Editor -->
+      <section class="editor-panel">
+        <div class="editor-header">
+          <h2>Code Editor</h2>
+          <span class="editor-status">Ready to code</span>
+        </div>
+
+        <div id="editor-container" style="flex: 1; width: 100%; border-top: 1px solid #334155; border-bottom: 1px solid #334155;"></div>
+
+        <div id="drag-bar"></div>
+
+        <div class="bottom-panel">
+          <div class="bottom-panel-header">Output Console</div>
+          <div class="console-box">
+            Run results will appear here...
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Connect UI Logic -->
+  <script src="./static/script.js"></script>
+</body>
+</html>

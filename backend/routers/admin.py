@@ -230,3 +230,22 @@ async def get_teams():
     """
     data = await get_team_dashboard_data()
     return data
+
+@router.post("/reset-db", response_model=StandardResponse)
+async def reset_db(db: aiosqlite.Connection = Depends(get_db)):
+    """Safe database cleanup for testing. Removes all teams, players, submissions, and execution results."""
+    await db.execute("BEGIN TRANSACTION")
+    try:
+        await db.execute("DELETE FROM execution_results")
+        await db.execute("DELETE FROM submissions")
+        await db.execute("DELETE FROM players")
+        await db.execute("DELETE FROM teams")
+        
+        # Reset sqlite_sequence to safely restart auto-increment logic if it exists
+        await db.execute("DELETE FROM sqlite_sequence WHERE name IN ('teams', 'players', 'submissions', 'execution_results')")
+        
+        await db.commit()
+        return StandardResponse(status="success", message="Database safely reset. System acts like a fresh start.")
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset DB: {str(e)}")

@@ -133,6 +133,14 @@ async def player_websocket(
             )
         else:
             # ── 5. First-time connect ──────────────────────────────────────
+            # Always notify the connecting player if their partner is already connected
+            partner_info = await get_partner_info(team_id, player_id)
+            if partner_info and partner_info.get("connection_status") == "online":
+                await manager.send_to_player(
+                    team_id, player_id,
+                    build_partner_joined(partner_info["name"])
+                )
+
             if manager.is_team_full(team_id):
                 # Both players now connected → send ASSIGNED once per team
                 if manager.should_send_assigned(team_id):
