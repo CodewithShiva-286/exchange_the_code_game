@@ -233,10 +233,29 @@ async function startAll() {
    }
 }
 
+// ── New Round ───────────────────────────────────────────────────────────────
+async function newRound() {
+   if (confirm("Are you sure you want to start a New Round?\n\nThis will keep players, teams, and scores, but clears submissions and assignments.")) {
+      try {
+         await apiFetch("/admin/new-round", { method: "POST" });
+         showToast("New Round initialized!", "success");
+         await fetchAndRender();
+      } catch (err) {
+         showModal("⚠️ Error", err.message);
+      }
+   }
+}
+
 // ── Reset ───────────────────────────────────────────────────────────────────
-function resetAll() {
-   if (confirm("Are you sure you want to reset? This cannot be undone.")) {
-      showToast("Reset not implemented in backend yet", "info");
+async function resetAll() {
+   if (confirm("Are you sure you want to reset everything? This clears EVERYTHING, including teams, players, and scores. This cannot be undone.")) {
+      try {
+         await apiFetch("/admin/reset-db", { method: "POST" });
+         showToast("Database safely reset!", "success");
+         await fetchAndRender();
+      } catch(err) {
+         showModal("⚠️ Error", err.message);
+      }
    }
 }
 
@@ -261,6 +280,10 @@ document.getElementById("createTeamBtn").addEventListener("click", async () => {
 
 document.getElementById("manageBtn").addEventListener("click", () => {
    window.location.href = "manage-assign.html";
+});
+
+document.getElementById("leaderboardBtn").addEventListener("click", () => {
+   window.location.href = "leaderboard.html";
 });
 
 document.getElementById("refreshBtn").addEventListener("click", async () => {

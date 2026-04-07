@@ -36,6 +36,7 @@ RUN_CODE     = "RUN_CODE"      # Run code against sample test cases
 ADMIN_CONNECTED     = "ADMIN_CONNECTED"
 ADMIN_STATUS_UPDATE = "ADMIN_STATUS_UPDATE"
 ADMIN_TEAM_UPDATE   = "ADMIN_TEAM_UPDATE"
+LEADERBOARD_UPDATE  = "LEADERBOARD_UPDATE"
 
 
 # ─── Payload Builders ─────────────────────────────────────────────────────────
@@ -84,6 +85,10 @@ def build_pong() -> dict:
 
 def build_admin_status(teams: list) -> dict:
     return build_event(ADMIN_STATUS_UPDATE, {"teams": teams})
+
+
+def build_leaderboard_update(leaderboard: list[dict]) -> dict:
+    return build_event(LEADERBOARD_UPDATE, {"leaderboard": leaderboard})
 
 
 def build_start_part_a(duration_seconds: int) -> dict:

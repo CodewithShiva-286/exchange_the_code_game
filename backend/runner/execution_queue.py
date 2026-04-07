@@ -19,6 +19,7 @@ from typing import Optional
 from ..config import settings
 from ..websocket.manager import manager
 from ..websocket.events import build_event
+from ..core.leaderboard import broadcast_leaderboard_update
 
 from .base_runner import RunResult, RunStatus, TestCaseResult
 from .python_runner import run_python
@@ -242,6 +243,8 @@ async def _process_task(task: ExecutionTask):
                 )
 
                 await db.commit()
+
+            await broadcast_leaderboard_update()
 
             # Broadcast RESULT to team
             await manager.broadcast_to_team(

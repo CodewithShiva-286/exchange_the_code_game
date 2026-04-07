@@ -3,31 +3,40 @@
 
 <head>
    <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Leaderboard - Techfest</title>
-   <link rel="stylesheet" href="leaderboard.css">
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="./leaderboard.css">
 </head>
 
 <body>
 
    <header>
-      <h1>📊 Leaderboard</h1>
+      <div class="header-left">
+         <h1>📊 Leaderboard</h1>
+         <span class="status-badge" id="wsStatus">Connecting...</span>
+      </div>
       <button class="back-btn" id="backBtn">⬅ Back</button>
    </header>
 
    <div class="container">
-      <table>
-         <thead>
-            <tr>
-               <th>Rank</th>
-               <th>Team</th>
-               <th>Score</th>
-            </tr>
-         </thead>
-         <tbody id="leaderboardBody"></tbody>
-      </table>
+      <div class="table-shell">
+         <table>
+            <thead>
+               <tr>
+                  <th>Rank</th>
+                  <th>Team</th>
+                  <th>Score</th>
+               </tr>
+            </thead>
+            <tbody id="leaderboardTableBody"></tbody>
+         </table>
+         <div class="empty-state hidden" id="emptyState">No scores yet. Leaderboard will update after final results are saved.</div>
+      </div>
    </div>
 
-   <script src="leaderboard.js"></script>
+   <script src="./leaderboard.js"></script>
 
 </body>
 

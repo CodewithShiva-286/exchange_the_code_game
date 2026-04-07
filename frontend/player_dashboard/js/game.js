@@ -171,6 +171,16 @@ function HandleWSEvent(msg) {
             document.getElementById('submitBtn').disabled = true;
             StorageManager.stopDrafting();
             break;
+        case "NEW_ROUND":
+            // Clear all drafts to ensure entirely fresh assignments
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('draft_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            // A simple reload will cleanly start the Session from 'waiting' via SESSION_RESTORE
+            window.location.reload();
+            break;
         case "RUN_OUTPUT":
             ResultManager.showRunOutput(data);
             break;

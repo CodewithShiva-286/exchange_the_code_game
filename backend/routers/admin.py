@@ -22,6 +22,7 @@ from ..models import (
 from ..problems.problem_loader import get_problem
 from ..websocket.manager import manager
 from ..core.team_manager import get_all_teams, get_team_dashboard_data
+from ..core.leaderboard import get_leaderboard_data, broadcast_leaderboard_update
 from ..core.timer_engine import start_team
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -238,6 +239,12 @@ async def get_teams():
     data = await get_team_dashboard_data()
     return data
 
+
+@router.get("/leaderboard")
+async def get_leaderboard():
+    """Return teams ranked by their current cumulative score."""
+    return await get_leaderboard_data()
+
 @router.post("/reset-db", response_model=StandardResponse)
 async def reset_db(db: aiosqlite.Connection = Depends(get_db)):
     """Safe database cleanup for testing. Removes all teams, players, submissions, and execution results."""
@@ -253,7 +260,39 @@ async def reset_db(db: aiosqlite.Connection = Depends(get_db)):
         await db.execute("DELETE FROM sqlite_sequence WHERE name IN ('teams', 'players', 'submissions', 'execution_results')")
         
         await db.commit()
+        await broadcast_leaderboard_update()
         return StandardResponse(status="success", message="Database safely reset. System acts like a fresh start.")
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to reset DB: {str(e)}")
+
+@router.post("/new-round", response_model=StandardResponse)
+async def new_round(db: aiosqlite.Connection = Depends(get_db)):
+    """Reset round state to allow a new game for the same teams, storing their scores."""
+    await db.execute("BEGIN TRANSACTION")
+    try:
+        await db.execute("DELETE FROM execution_results")
+        await db.execute("DELETE FROM submissions")
+        
+        await db.execute("UPDATE teams SET status = 'waiting', current_phase = 'waiting', group_id = NULL")
+        
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset round: {str(e)}")
+
+    # Stop all timers and active execution
+    from ..core.timer_engine import _active_tasks
+    for task in list(_active_tasks):
+        if not task.done():
+            task.cancel()
+    _active_tasks.clear()
+
+    # Reset assignment state tracking and broadcast to players
+    teams = await get_all_teams()
+    from ..websocket.events import build_event
+    for team_id in teams:
+        manager._assigned_sent.discard(team_id)
+        await manager.broadcast_to_team(team_id, build_event("NEW_ROUND", {}))
+
+    return StandardResponse(status="success", message="Round state successfully reset. Ready for new assignments.")
