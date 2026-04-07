@@ -18,7 +18,7 @@ async def get_leaderboard_data() -> list[dict]:
     async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
         async with db.execute(
             """
-            SELECT team_id, MAX(total_score) AS total_score
+            SELECT team_id, SUM(total_score) AS total_score
             FROM team_scores
             GROUP BY team_id
             ORDER BY total_score DESC, team_id ASC
