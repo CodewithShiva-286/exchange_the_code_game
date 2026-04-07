@@ -22,6 +22,17 @@ logger = logging.getLogger("core.timer")
 
 # Keep references to prevent GC
 _active_tasks = set()
+_team_events = {}
+
+def get_team_event(team_id: str, phase: str) -> asyncio.Event:
+    if team_id not in _team_events:
+        _team_events[team_id] = {}
+    if phase not in _team_events[team_id]:
+        _team_events[team_id][phase] = asyncio.Event()
+    return _team_events[team_id][phase]
+
+def trigger_early_swap(team_id: str, phase: str):
+    get_team_event(team_id, phase).set()
 
 
 async def _set_team_phase(team_id: str, phase: str):
@@ -64,35 +75,48 @@ async def _run_team_timer(team_id: str):
         await _set_team_phase(team_id, "part_a")
         await manager.broadcast_to_team(team_id, build_start_part_a(settings.part_a_duration))
         
+        part_a_event = get_team_event(team_id, "part_a")
         for remaining in range(settings.part_a_duration, 0, -1):
             if remaining % 5 == 0:
                 await manager.broadcast_to_team(team_id, build_timer_tick(remaining, "part_a"))
-            await asyncio.sleep(1)
+            try:
+                await asyncio.wait_for(part_a_event.wait(), timeout=1.0)
+                break
+            except asyncio.TimeoutError:
+                pass
             
         # ── 2. Lock Part A ───────────────────────────────────────────────────
-        await manager.broadcast_to_team(team_id, build_lock_and_submit())
-        await force_team_submissions(team_id, "part_a")
+        if not part_a_event.is_set():
+            await manager.broadcast_to_team(team_id, build_lock_and_submit())
+            await force_team_submissions(team_id, "part_a")
         
         # ── 3. Wait Buffer ───────────────────────────────────────────────────
-        await _set_team_phase(team_id, "buffer")
-        for remaining in range(settings.buffer_duration, 0, -1):
-            await manager.broadcast_to_team(team_id, build_wait_for_swap(remaining))
-            await asyncio.sleep(1)
+        if not part_a_event.is_set():
+            await _set_team_phase(team_id, "buffer")
+            for remaining in range(settings.buffer_duration, 0, -1):
+                await manager.broadcast_to_team(team_id, build_wait_for_swap(remaining))
+                await asyncio.sleep(1)
             
         # ── 4. Setup Part B (Swap) ───────────────────────────────────────────
         await _set_team_phase(team_id, "part_b")
         await perform_swap(team_id)
         
         # ── 5. Part B ────────────────────────────────────────────────────────
+        part_b_event = get_team_event(team_id, "part_b")
         for remaining in range(settings.part_b_duration, 0, -1):
             if remaining % 5 == 0:
                 await manager.broadcast_to_team(team_id, build_timer_tick(remaining, "part_b"))
-            await asyncio.sleep(1)
+            try:
+                await asyncio.wait_for(part_b_event.wait(), timeout=1.0)
+                break
+            except asyncio.TimeoutError:
+                pass
             
         # ── 6. End Game ──────────────────────────────────────────────────────
         await _set_team_phase(team_id, "ended")
-        await manager.broadcast_to_team(team_id, build_lock_and_submit())
-        await force_team_submissions(team_id, "part_b")
+        if not part_b_event.is_set():
+            await manager.broadcast_to_team(team_id, build_lock_and_submit())
+            await force_team_submissions(team_id, "part_b")
         await manager.broadcast_to_team(team_id, build_end_game())
         
     except asyncio.CancelledError:

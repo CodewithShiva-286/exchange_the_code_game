@@ -7,7 +7,8 @@
 
 let allTeams = [];
 let allGroups = [];
-let allProblems = []; // fetched from /admin/groups -> deduplicated
+//exchanged_1 line
+let allProblems = []; // fetched from /admin/problems
 
 // ── API Helper ──────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
@@ -25,15 +26,10 @@ async function loadData() {
    try {
       allTeams = await apiFetch("/admin/teams");
       allGroups = await apiFetch("/admin/groups");
+      allProblems = await apiFetch("/admin/problems");
 
-      // Deduplicate problem IDs from groups
-      const problemSet = new Set();
-      for (const g of allGroups) {
-         for (const p of g.problems) {
-            problemSet.add(p.problem_id);
-         }
-      }
-      allProblems = Array.from(problemSet).sort();
+      renderTable();
+      populateProblemSelects();
 
       renderTable();
       populateProblemSelects();
@@ -79,9 +75,9 @@ function renderTable() {
          <td id="p2-${team.team_id}">${p2}</td>
          <td>
             ${team.group_id
-               ? `<span class="assigned-tag">✓ Assigned</span>`
-               : `<span style="color:#555">—</span>`
-            }
+            ? `<span class="assigned-tag">✓ Assigned</span>`
+            : `<span style="color:#555">—</span>`
+         }
          </td>`;
 
       table.appendChild(row);
@@ -108,15 +104,13 @@ function populateProblemSelects() {
    const p1 = document.getElementById("newP1");
    const p2 = document.getElementById("newP2");
 
-   // Also fetch all available problems from the backend
-   fetch(`${BASE_URL}/problem/p001`).catch(() => {}); // ping to check
-
    p1.innerHTML = `<option value="">-- Select --</option>`;
    p2.innerHTML = `<option value="">-- Select --</option>`;
 
-   for (const pid of allProblems) {
-      p1.innerHTML += `<option value="${pid}">${pid}</option>`;
-      p2.innerHTML += `<option value="${pid}">${pid}</option>`;
+   for (const p of allProblems) {
+      const optionText = `${p.id} - ${p.title}`;
+      p1.innerHTML += `<option value="${p.id}">${escapeHtml(optionText)}</option>`;
+      p2.innerHTML += `<option value="${p.id}">${escapeHtml(optionText)}</option>`;
    }
 }
 

@@ -202,6 +202,15 @@ async def player_websocket(
                             team_id, player_id, 
                             build_error("SUBMIT_FAILED", "Failed to save final submission.")
                         )
+                    else:
+                        from .events import build_wait_for_swap
+                        from ..core.submission_handler import check_both_submitted
+                        from ..core.timer_engine import trigger_early_swap
+                        
+                        await manager.send_to_player(team_id, player_id, build_wait_for_swap(10))
+                        
+                        if await check_both_submitted(team_id, team_status["current_phase"]):
+                            trigger_early_swap(team_id, team_status["current_phase"])
 
             elif event_type == RUN_CODE:
                 data = message.get("data", {})

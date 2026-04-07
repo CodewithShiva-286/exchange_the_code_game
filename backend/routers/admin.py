@@ -19,13 +19,26 @@ from ..models import (
     GroupAssignRequest, StandardResponse,
     ReadyCheckResponse, TeamReadyStatus
 )
-from ..problems.problem_loader import get_problem
+from ..problems.problem_loader import get_problem, get_all_problems
 from ..websocket.manager import manager
 from ..core.team_manager import get_all_teams, get_team_dashboard_data
 from ..core.leaderboard import get_leaderboard_data, broadcast_leaderboard_update
 from ..core.timer_engine import start_team
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/problems")
+async def list_available_problems():
+    """
+    Returns all loaded problems (ID, title, etc) from the filesystem cache.
+    Used by the admin dashboard for creating groups.
+    """
+    problems = get_all_problems()
+    return [
+        {"id": p.id, "title": p.title, "description": p.description}
+        for p in problems.values()
+    ]
 
 
 from typing import Optional

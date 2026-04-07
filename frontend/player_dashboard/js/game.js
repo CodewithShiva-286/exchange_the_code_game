@@ -133,7 +133,7 @@ function HandleWSEvent(msg) {
             break;
         case "WAIT_FOR_SWAP":
             currentPhase = 'wait_swap';
-            UI.setPhaseText("Waiting for Swap...");
+            UI.setPhaseText("Waiting for partner...");
             EditorWrap.setReadOnly(true);
             StorageManager.stopDrafting();
             break;

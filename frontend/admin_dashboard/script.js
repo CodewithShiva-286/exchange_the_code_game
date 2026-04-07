@@ -78,11 +78,15 @@ async function fetchGroups() {
 // ── Fetch Teams & Render ────────────────────────────────────────────────────
 async function fetchAndRender() {
    try {
-      const teams = await apiFetch("/admin/teams");
+      // Fetch both teams and groups to keep dropdowns in sync
+      const [teams] = await Promise.all([
+         apiFetch("/admin/teams"),
+         fetchGroups()
+      ]);
       setServerStatus(true);
       renderTeams(teams);
    } catch (err) {
-      console.error("Failed to fetch teams:", err);
+      console.error("Failed to fetch dashboard data:", err);
    }
 }
 
@@ -143,10 +147,14 @@ function renderTeams(teams) {
       // Group assignment dropdown
       const currentGroup = team.group_id;
       let groupOptions = `<option value="">Assign Group...</option>`;
-      for (const g of cachedGroups) {
-         const selected = g.group_id === currentGroup ? "selected" : "";
-         const problemLabels = g.problems.map(p => p.problem_id).join(", ");
-         groupOptions += `<option value="${g.group_id}" ${selected}>${g.group_id} (${problemLabels})</option>`;
+      if (cachedGroups.length === 0) {
+         groupOptions = `<option value="">No Groups Found - Create them in 'Manage Assignments'</option>`;
+      } else {
+         for (const g of cachedGroups) {
+            const selected = g.group_id === currentGroup ? "selected" : "";
+            const problemLabels = g.problems.map(p => p.problem_id).join(", ");
+            groupOptions += `<option value="${g.group_id}" ${selected}>${g.group_id} (${problemLabels})</option>`;
+         }
       }
 
       card.innerHTML = `

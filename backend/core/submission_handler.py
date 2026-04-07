@@ -48,3 +48,22 @@ async def auto_submit_draft(player_id: int, problem_id: str, phase: str = "part_
     """Fallback when timer locks and no final submit was received."""
     code = _DRAFTS.get((player_id, problem_id), "")
     return await receive_final(player_id, problem_id, code, phase)
+
+
+async def check_both_submitted(team_id: str, phase: str) -> bool:
+    """Check if both players in a team have submitted final code for the given phase."""
+    try:
+        async with aiosqlite.connect(settings.database_path, timeout=15.0) as db:
+            async with db.execute(
+                """
+                SELECT COUNT(*) FROM submissions s
+                JOIN players p ON p.id = s.player_id
+                WHERE p.team_id = ? AND s.phase = ? AND s.is_final = 1
+                """,
+                (team_id, phase)
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row[0] == 2 if row else False
+    except Exception as e:
+        logger.error(f"Failed to check submissions for team {team_id}: {e}")
+        return False
