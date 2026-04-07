@@ -5,8 +5,10 @@ const MAX_RECONNECT = 5;
 function connectWS() {
     if (!SESSION || !SESSION.team_id || !SESSION.player_id || !SESSION.session_token) return;
     
-    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProto}//${window.location.host}/ws/${SESSION.team_id}/${SESSION.player_id}?token=${SESSION.session_token}`;
+    const wsBase = window.location.protocol === "https:"
+        ? WS_URL.replace("ws://", "wss://")
+        : WS_URL;
+    const wsUrl = `${wsBase}/ws/${SESSION.team_id}/${SESSION.player_id}?token=${SESSION.session_token}`;
     
     ws = new WebSocket(wsUrl);
     

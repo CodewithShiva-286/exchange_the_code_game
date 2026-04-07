@@ -1,8 +1,3 @@
-const HOST = window.location.hostname || "localhost";
-const HTTP_PROTOCOL = window.location.protocol === "file:" ? "http:" : window.location.protocol;
-const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
-const BASE_URL = `${HTTP_PROTOCOL}//${HOST}:8000`;
-const WS_URL = `${WS_PROTOCOL}//${HOST}:8000`;
 const ADMIN_WS_KEY = window.localStorage.getItem("admin_ws_key") || "techfest-admin-secret-2026";
 
 let adminSocket = null;
@@ -62,7 +57,10 @@ function connectAdminSocket() {
    }
 
    setSocketStatus("Connecting...");
-   adminSocket = new WebSocket(`${WS_URL}/ws/admin?key=${encodeURIComponent(ADMIN_WS_KEY)}`);
+   const adminWsBase = window.location.protocol === "https:"
+      ? WS_URL.replace("ws://", "wss://")
+      : WS_URL;
+   adminSocket = new WebSocket(`${adminWsBase}/ws/admin?key=${encodeURIComponent(ADMIN_WS_KEY)}`);
 
    adminSocket.addEventListener("open", () => {
       setSocketStatus("Live updates on", "live");

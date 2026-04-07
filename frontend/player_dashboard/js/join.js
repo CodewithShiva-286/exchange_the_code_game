@@ -1,5 +1,3 @@
-const API_BASE = window.location.origin;
-
 const joinForm = document.getElementById('joinForm');
 const teamIdInput = document.getElementById('teamIdInput');
 const playerNameInput = document.getElementById('playerNameInput');
@@ -36,7 +34,7 @@ joinForm.addEventListener('submit', async (e) => {
     showStatus('Joining...', 'info');
 
     try {
-        const res = await fetch(`${API_BASE}/join`, {
+        const res = await fetch(`${BASE_URL}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ team_id: teamId, name: name })

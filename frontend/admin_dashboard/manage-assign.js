@@ -5,15 +5,13 @@
  * Fetches teams and groups from API, allows creating groups and assigning them.
  */
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
-
 let allTeams = [];
 let allGroups = [];
 let allProblems = []; // fetched from /admin/groups -> deduplicated
 
 // ── API Helper ──────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
-   const res = await fetch(`${API_BASE}${path}`, {
+   const res = await fetch(`${BASE_URL}${path}`, {
       headers: { "Content-Type": "application/json" },
       ...options,
    });
@@ -111,7 +109,7 @@ function populateProblemSelects() {
    const p2 = document.getElementById("newP2");
 
    // Also fetch all available problems from the backend
-   fetch(`${API_BASE}/problem/p001`).catch(() => {}); // ping to check
+   fetch(`${BASE_URL}/problem/p001`).catch(() => {}); // ping to check
 
    p1.innerHTML = `<option value="">-- Select --</option>`;
    p2.innerHTML = `<option value="">-- Select --</option>`;

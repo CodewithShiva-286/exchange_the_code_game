@@ -9,7 +9,6 @@
  */
 
 // ── Config ──────────────────────────────────────────────────────────────────
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
 let pollInterval = null;
 let cachedGroups = [];
 
@@ -44,7 +43,7 @@ function closeModal() {
 // ── API Helpers ──────────────────────────────────────────────────────────────
 async function apiFetch(path, options = {}) {
    try {
-      const res = await fetch(`${API_BASE}${path}`, {
+      const res = await fetch(`${BASE_URL}${path}`, {
          headers: { "Content-Type": "application/json" },
          ...options,
       });
