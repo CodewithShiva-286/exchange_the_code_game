@@ -230,6 +230,20 @@ async def get_groups(db: aiosqlite.Connection = Depends(get_db)):
     return result
 
 
+@router.get("/problems")
+async def get_problems():
+    """
+    Returns all available problems loaded from the problem JSON files.
+    Used by the admin UI to populate the Create Group dropdowns.
+    """
+    from ..problems.problem_loader import get_all_problems
+    return [
+        {"problem_id": p.id, "title": p.title}
+        for p in get_all_problems().values()
+    ]
+
+
+
 @router.get("/teams")
 async def get_teams():
     """

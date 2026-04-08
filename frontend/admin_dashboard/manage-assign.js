@@ -26,14 +26,9 @@ async function loadData() {
       allTeams = await apiFetch("/admin/teams");
       allGroups = await apiFetch("/admin/groups");
 
-      // Deduplicate problem IDs from groups
-      const problemSet = new Set();
-      for (const g of allGroups) {
-         for (const p of g.problems) {
-            problemSet.add(p.problem_id);
-         }
-      }
-      allProblems = Array.from(problemSet).sort();
+      // Fetch all available problems directly from the backend
+      const problemList = await apiFetch("/admin/problems");
+      allProblems = problemList.map(p => p.problem_id).sort();
 
       renderTable();
       populateProblemSelects();

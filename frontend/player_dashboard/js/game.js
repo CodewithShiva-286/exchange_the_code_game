@@ -75,6 +75,12 @@ function actuallySubmitCode() {
     const lang = document.getElementById('languageSelect').value;
     code = sanitizeCode(code, lang);
 
+    // Debug logs (MANDATORY)
+    console.log("Player slot:", SESSION.player_slot);
+    console.log("Team ID:", SESSION.team_id);
+    console.log("Problem ID:", currentProblemId);
+    console.log("Phase:", currentPhase);
+
     submitted = true;
     document.getElementById('submitBtn').disabled = true;
     document.getElementById('runBtn').disabled = true;

@@ -26,8 +26,8 @@ import aiosqlite
 from .manager import manager
 from .events import (
     build_connected, build_partner_joined, build_assigned,
-    build_session_restore, build_error, build_pong, PING,
-    DRAFT_SAVE, FINAL_SUBMIT, RUN_CODE
+    build_session_restore, build_error, build_pong, build_start_part_b,
+    PING, DRAFT_SAVE, FINAL_SUBMIT, RUN_CODE
 )
 from ..config import settings
 from ..problems.problem_loader import get_problem
@@ -36,7 +36,7 @@ logger = logging.getLogger("ws.player")
 router = APIRouter()
 
 from ..core.team_manager import get_player_info, get_partner_info, get_assigned_problem, get_team_status
-from ..core.submission_handler import receive_draft, receive_final
+from ..core.submission_handler import receive_draft, receive_final, check_both_submitted
 from ..runner.execution_queue import submit_task, ExecutionTask
 
 
@@ -202,6 +202,46 @@ async def player_websocket(
                             team_id, player_id, 
                             build_error("SUBMIT_FAILED", "Failed to save final submission.")
                         )
+                    else:
+                        # ── Auto-swap: check if both players have submitted ────
+                        phase = team_status["current_phase"]
+                        logger.info(f"[SWAP] Player {player_id} (team {team_id}) submitted. Checking partner...")
+                        both_codes = await check_both_submitted(team_id, phase)
+                        if both_codes is not None and phase == "part_a":
+                            # Both submitted Part A → swap code and start Part B
+                            logger.info(f"[SWAP] Team {team_id}: BOTH submitted! Triggering auto-swap.")
+                            conns = manager.get_team_connections(team_id)
+                            for pid in list(conns.keys()):
+                                p_info = await get_player_info(pid, team_id)
+                                if not p_info:
+                                    continue
+                                p_slot = p_info["player_slot"]
+                                partner_slot = 3 - p_slot  # slot 1↔slot 2
+
+                                # Get partner's code: the OTHER player's submission
+                                partner_code = both_codes.get(
+                                    next((k for k in both_codes if k != pid), None), ""
+                                ) or ""
+                                logger.info(f"[SWAP] Sending to player {pid} (slot {p_slot}): partner_code length={len(partner_code)}")
+
+                                # Full problem for the partner's slot (they will work on it in Part B)
+                                partner_problem = await get_assigned_problem(team_id, partner_slot)
+                                if not partner_problem:
+                                    partner_problem = {}
+
+                                part_b_prompt = partner_problem.get("part_b_prompt", "Complete Part B!")
+
+                                await manager.send_to_player(
+                                    team_id, pid,
+                                    build_start_part_b(
+                                        duration_seconds=1800,
+                                        partner_code=partner_code,
+                                        part_b_prompt=part_b_prompt,
+                                        full_problem=partner_problem,
+                                    )
+                                )
+                        elif both_codes is None and phase == "part_a":
+                            logger.info(f"[SWAP] Team {team_id}: Waiting for partner to submit.")
 
             elif event_type == RUN_CODE:
                 data = message.get("data", {})
