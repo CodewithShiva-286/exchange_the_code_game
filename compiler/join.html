@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join Game — Exchange Code</title>
+  <link rel="stylesheet" href="join.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Animated background particles -->
+  <div class="bg-particles" id="bgParticles"></div>
+
+  <main class="join-container">
+    <!-- Logo / Branding -->
+    <div class="brand-section">
+      <div class="logo-icon">⇄</div>
+      <h1 class="brand-title">Exchange Code</h1>
+      <p class="brand-subtitle">Relay Coding Challenge</p>
+    </div>
+
+    <!-- Join Form Card -->
+    <div class="join-card">
+      <h2 class="card-title">Join a Game</h2>
+      <p class="card-description">Enter your team ID and name to start coding.</p>
+
+      <form id="joinForm" autocomplete="off">
+        <div class="input-group">
+          <label for="teamIdInput">Team ID</label>
+          <div class="input-wrapper">
+            <span class="input-icon">🏷️</span>
+            <input
+              type="text"
+              id="teamIdInput"
+              placeholder="e.g. TEAM-ALPHA"
+              required
+              maxlength="30"
+            />
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label for="playerNameInput">Player Name</label>
+          <div class="input-wrapper">
+            <span class="input-icon">👤</span>
+            <input
+              type="text"
+              id="playerNameInput"
+              placeholder="e.g. Shiva"
+              required
+              maxlength="20"
+            />
+          </div>
+        </div>
+
+        <button type="submit" class="join-btn" id="joinBtn">
+          <span class="btn-text">Join Game</span>
+          <span class="btn-spinner" id="btnSpinner"></span>
+        </button>
+      </form>
+
+      <!-- Status Message -->
+      <div class="status-area" id="statusArea"></div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer-text">Built for LAN Relay Coding Competitions</p>
+  </main>
+
+  <script src="static/join.js"></script>
+</body>
+</html>

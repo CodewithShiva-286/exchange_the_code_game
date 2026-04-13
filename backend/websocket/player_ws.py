@@ -76,14 +76,17 @@ async def _build_restore_data(team_id: str, player_id: int) -> dict:
     player_info = await get_player_info(player_id, team_id)
     partner_info = await get_partner_info(team_id, player_id)
 
+    team_status = await get_team_status(team_id)
+    phase = team_status["current_phase"] if team_status else "waiting"
+
+    if phase == "waiting" and partner_info and partner_info["connection_status"] == "online":
+        phase = "assigned"
+
     assigned_problem = None
     if player_info and player_info["player_slot"]:
-        assigned_problem = await get_assigned_problem(team_id, player_info["player_slot"])
-
-    # Phase inference (Chunk 2 scope: only waiting or assigned)
-    phase = "waiting"
-    if partner_info and partner_info["connection_status"] == "online":
-        phase = "assigned"
+        # In Part B and Ended, UI must restore the partner's problem as the main assignment
+        target_slot = player_info["player_slot"] if phase not in ("part_b", "ended") else (3 - player_info["player_slot"])
+        assigned_problem = await get_assigned_problem(team_id, target_slot)
 
     return {
         "player": player_info,
@@ -133,6 +136,14 @@ async def player_websocket(
             )
         else:
             # ── 5. First-time connect ──────────────────────────────────────
+            # Always notify the connecting player if their partner is already connected
+            partner_info = await get_partner_info(team_id, player_id)
+            if partner_info and partner_info.get("connection_status") == "online":
+                await manager.send_to_player(
+                    team_id, player_id,
+                    build_partner_joined(partner_info["name"])
+                )
+
             if manager.is_team_full(team_id):
                 # Both players now connected → send ASSIGNED once per team
                 if manager.should_send_assigned(team_id):
@@ -194,6 +205,7 @@ async def player_websocket(
 
             elif event_type == RUN_CODE:
                 data = message.get("data", {})
+                print("RUN_CODE RECEIVED:", data)
                 code = data.get("code", "")
                 language = data.get("language", "python")
                 problem_id = data.get("problem_id", "")

@@ -1,0 +1,198 @@
+:root {
+   --bg-primary: #0a0a0f;
+   --bg-card: #12121a;
+   --bg-hover: #171724;
+   --border: #1e1e30;
+   --text-primary: #e8e8f0;
+   --text-secondary: #8888a8;
+   --accent-blue: #3b82f6;
+   --accent-green: #22c55e;
+   --gold: #f4c542;
+   --silver: #c0c6d9;
+   --bronze: #cd7f32;
+   --radius: 12px;
+   --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+   margin: 0;
+   padding: 0;
+   box-sizing: border-box;
+}
+
+body {
+   font-family: var(--font);
+   background: var(--bg-primary);
+   color: var(--text-primary);
+   min-height: 100vh;
+}
+
+header {
+   padding: 16px 32px;
+   border-bottom: 1px solid var(--border);
+   background: linear-gradient(180deg, #0f0f18 0%, var(--bg-primary) 100%);
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+}
+
+.header-left {
+   display: flex;
+   align-items: center;
+   gap: 16px;
+}
+
+h1 {
+   font-size: 20px;
+   font-weight: 700;
+}
+
+.status-badge {
+   font-size: 12px;
+   font-weight: 600;
+   color: var(--text-secondary);
+   padding: 6px 12px;
+   border: 1px solid var(--border);
+   border-radius: 999px;
+   background: rgba(255, 255, 255, 0.02);
+}
+
+.status-badge.live {
+   color: var(--accent-green);
+   border-color: rgba(34, 197, 94, 0.25);
+   background: rgba(34, 197, 94, 0.08);
+}
+
+.status-badge.offline {
+   color: #f59e0b;
+   border-color: rgba(245, 158, 11, 0.25);
+   background: rgba(245, 158, 11, 0.08);
+}
+
+.back-btn {
+   padding: 8px 14px;
+   border: 1px solid var(--border);
+   border-radius: 8px;
+   background: transparent;
+   color: var(--text-secondary);
+   cursor: pointer;
+   font-family: var(--font);
+   font-weight: 600;
+   transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+   color: var(--accent-blue);
+   border-color: var(--accent-blue);
+}
+
+.container {
+   padding: 24px 32px;
+}
+
+.table-shell {
+   background: var(--bg-card);
+   border: 1px solid var(--border);
+   border-radius: var(--radius);
+   overflow: hidden;
+}
+
+table {
+   width: 100%;
+   border-collapse: collapse;
+}
+
+th,
+td {
+   padding: 16px 18px;
+   text-align: left;
+}
+
+th {
+   color: var(--text-secondary);
+   background: #15151f;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   font-size: 11px;
+}
+
+tbody tr {
+   border-top: 1px solid var(--border);
+}
+
+tbody tr:hover {
+   background: var(--bg-hover);
+}
+
+td:last-child,
+th:last-child {
+   text-align: right;
+}
+
+.rank-chip {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   min-width: 34px;
+   padding: 6px 10px;
+   border-radius: 999px;
+   background: rgba(255, 255, 255, 0.05);
+   font-weight: 700;
+}
+
+.rank-1 .rank-chip {
+   color: #1f1600;
+   background: var(--gold);
+}
+
+.rank-2 .rank-chip {
+   color: #1b1f29;
+   background: var(--silver);
+}
+
+.rank-3 .rank-chip {
+   color: #211000;
+   background: var(--bronze);
+}
+
+.team-name {
+   font-weight: 600;
+}
+
+.score-value {
+   font-weight: 700;
+}
+
+.empty-state {
+   padding: 32px;
+   color: var(--text-secondary);
+   text-align: center;
+}
+
+.hidden {
+   display: none;
+}
+
+@media (max-width: 720px) {
+   header,
+   .container {
+      padding: 16px;
+   }
+
+   header {
+      gap: 12px;
+      align-items: flex-start;
+      flex-direction: column;
+   }
+
+   .header-left {
+      width: 100%;
+      justify-content: space-between;
+   }
+
+   th,
+   td {
+      padding: 14px 12px;
+      font-size: 13px;
+   }
+}

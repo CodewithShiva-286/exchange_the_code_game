@@ -202,8 +202,9 @@ async def test_assign_group_rejects_reassignment(client):
         "/admin/assign-group",
         json={"team_id": "T-REASSIGN", "group_id": "GROUP-I"}
     )
-    assert res.status_code == 400
-    assert "already has a group" in res.json()["detail"]
+    # Reassignment is now allowed (overwrites previous group)
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
 
 
 @pytest.mark.asyncio

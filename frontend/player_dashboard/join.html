@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Team - Exchange Code</title>
+    <link rel="stylesheet" href="css/join.css">
+</head>
+<body>
+    <div id="bgParticles" class="particles"></div>
+    <div class="join-container">
+        <h1>Exchange Code Game</h1>
+        <p>Enter your team ID to join.</p>
+        <form id="joinForm">
+            <div class="input-group">
+                <input type="text" id="teamIdInput" placeholder="Team ID (e.g. TEAM-1)" required />
+            </div>
+            <div class="input-group">
+                <input type="text" id="playerNameInput" placeholder="Your Name" required />
+            </div>
+            <button type="submit" id="joinBtn">
+                <span class="btn-text">Join Game</span>
+            </button>
+        </form>
+        <div id="statusArea" class="status-area hidden"></div>
+    </div>
+    <script src="../config.js"></script>
+    <script src="js/join.js"></script>
+</body>
+</html>

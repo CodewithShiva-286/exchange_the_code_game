@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Exchange Game</title>
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Load Monaco Local -->
+    <script src="./monaco-editor/min/vs/loader.js"></script>
+    <script>
+        require.config({ paths: { 'vs': './monaco-editor/min/vs' }});
+    </script>
+</head>
+<body>
+<div class="app-container">
+    <header class="topbar">
+        <div class="brand">
+            <h1>Exchange Code</h1>
+            <p id="brandInfo">Loading session...</p>
+        </div>
+        <div class="top-center">
+            <div class="status-box">
+                Phase: <span class="highlight" id="phaseLabel">Waiting...</span>
+            </div>
+            <div class="timer-box">
+                Round Timer: <span class="highlight" id="timer">--:--</span>
+            </div>
+        </div>
+        <div class="top-actions">
+            <span id="partnerStatus" style="font-size: 0.8rem; color: #ef4444; margin-right: 15px;">Partner: Offline</span>
+            <select id="languageSelect" class="language-select">
+                <option value="python">Python</option>
+                <option value="cpp">C++</option>
+            </select>
+            <button class="btn run-btn" id="runBtn" disabled>Run</button>
+            <button class="btn submit-btn" id="submitBtn" disabled>Submit</button>
+            <button class="btn logout-btn" id="logoutBtn" title="Leave game">⏻</button>
+        </div>
+    </header>
+
+    <main class="main-layout">
+        <section class="problem-panel">
+            <div class="problem-header">
+                <span class="problem-tag">Problem Statement</span>
+                <span class="part-tag" id="partBadge">-</span>
+            </div>
+            <h2 class="problem-title" id="problemTitle">Awaiting Assignment...</h2>
+            <p class="problem-text" id="problemDescription"></p>
+
+            <div class="phase-block" id="partABlock" style="display: none;">
+                <h3>Part A</h3>
+                <p id="partAPrompt"></p>
+            </div>
+            <div class="phase-block" id="partBBlock" style="display: none;">
+                <h3>Part B</h3>
+                <p id="partBPrompt"></p>
+            </div>
+        </section>
+
+        <section class="editor-panel">
+            <div class="editor-header">
+                <h2>Code Editor</h2>
+                <span class="editor-status" id="editorStatus">Locked</span>
+            </div>
+            <div id="editor-container" style="flex: 1; width: 100%; border-top: 1px solid #334155; border-bottom: 1px solid #334155;"></div>
+            <div id="drag-bar"></div>
+            <div class="bottom-panel">
+                <div class="bottom-panel-header">Output Console <button id="clearConsoleBtn" style="float:right;height:100%;background:none;border:none;color:#94a3b8;cursor:pointer;">Clear</button></div>
+                <div class="console-box" id="consoleBox">
+                    Console output will appear here...
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="../config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/timer.js"></script>
+<script src="js/result.js"></script>
+<script src="js/game.js"></script>
+<script src="js/websocket.js"></script>
+</body>
+</html>

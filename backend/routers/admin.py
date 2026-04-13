@@ -21,24 +21,45 @@ from ..models import (
 )
 from ..problems.problem_loader import get_problem
 from ..websocket.manager import manager
-from ..core.team_manager import get_all_teams
+from ..core.team_manager import get_all_teams, get_team_dashboard_data
+from ..core.leaderboard import get_leaderboard_data, broadcast_leaderboard_update
 from ..core.timer_engine import start_team
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-@router.post("/create-team", response_model=TeamCreateResponse)
-async def create_team(request: TeamCreateRequest, db: aiosqlite.Connection = Depends(get_db)):
-    """Create a new team. Team ID must be unique."""
-    async with db.execute(
-        "SELECT team_id FROM teams WHERE team_id = ?", (request.team_id,)
-    ) as cursor:
-        if await cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Team ID already exists")
+from typing import Optional
 
-    await db.execute("INSERT INTO teams (team_id) VALUES (?)", (request.team_id,))
+@router.post("/create-team", response_model=TeamCreateResponse)
+async def create_team(request: Optional[TeamCreateRequest] = None, db: aiosqlite.Connection = Depends(get_db)):
+    """Create a new team. Team ID must be unique. Auto-generates if not provided."""
+    team_id = request.team_id if request else None
+
+    # Auto-generate if omitted
+    if not team_id:
+        async with db.execute("SELECT COUNT(*) FROM teams") as cursor:
+            row = await cursor.fetchone()
+            count = row[0] if row else 0
+            
+        team_id = f"TEAM-{count + 1}"
+        
+        # Ensure unique by incrementing until we find an empty slot
+        while True:
+            async with db.execute("SELECT team_id FROM teams WHERE team_id = ?", (team_id,)) as cursor:
+                if not await cursor.fetchone():
+                    break
+            count += 1
+            team_id = f"TEAM-{count + 1}"
+    else:
+        async with db.execute(
+            "SELECT team_id FROM teams WHERE team_id = ?", (team_id,)
+        ) as cursor:
+            if await cursor.fetchone():
+                raise HTTPException(status_code=400, detail="Team ID already exists")
+
+    await db.execute("INSERT INTO teams (team_id) VALUES (?)", (team_id,))
     await db.commit()
-    return TeamCreateResponse(status="success", team_id=request.team_id)
+    return TeamCreateResponse(status="success", team_id=team_id)
 
 
 @router.post("/create-group", response_model=GroupCreateResponse)
@@ -91,8 +112,6 @@ async def assign_group(request: GroupAssignRequest, db: aiosqlite.Connection = D
         team_row = await cursor.fetchone()
         if not team_row:
             raise HTTPException(status_code=404, detail="Team not found")
-        if team_row[1] is not None:
-            raise HTTPException(status_code=400, detail="Team already has a group assigned")
 
     # Validate group exists and has exactly 2 problems
     async with db.execute(
@@ -117,6 +136,13 @@ async def assign_group(request: GroupAssignRequest, db: aiosqlite.Connection = D
         (request.group_id, request.team_id)
     )
     await db.commit()
+    
+    # Immediately push ASSIGNED to connected players of this team
+    from ..websocket.player_ws import _send_assigned_to_team
+    from ..websocket.manager import manager
+    if manager.is_team_full(request.team_id):
+        await _send_assigned_to_team(request.team_id)
+        manager.mark_assigned_sent(request.team_id)
 
     return StandardResponse(status="success", message=f"Group '{request.group_id}' assigned to team '{request.team_id}'")
 
@@ -173,3 +199,100 @@ async def start_round(db: aiosqlite.Connection = Depends(get_db)):
         start_team(team_id)
     
     return StandardResponse(status="success", message="Game started for all teams.")
+
+
+@router.get("/groups")
+async def get_groups(db: aiosqlite.Connection = Depends(get_db)):
+    """
+    Returns all available problem groups for the admin dropdown.
+    Lightweight: just group_id + problem IDs.
+    """
+    async with db.execute("SELECT group_id FROM groups ORDER BY group_id") as cursor:
+        group_rows = await cursor.fetchall()
+
+    result = []
+    for row in group_rows:
+        gid = row[0]
+        async with db.execute(
+            "SELECT problem_id, position FROM group_problems WHERE group_id = ? ORDER BY position",
+            (gid,)
+        ) as cursor:
+            problems = await cursor.fetchall()
+
+        result.append({
+            "group_id": gid,
+            "problems": [
+                {"problem_id": p[0], "position": p[1]}
+                for p in problems
+            ],
+        })
+
+    return result
+
+
+@router.get("/teams")
+async def get_teams():
+    """
+    Returns full dashboard data for all teams.
+    Includes group assignment, player slots, and live WS connection status.
+    """
+    data = await get_team_dashboard_data()
+    return data
+
+
+@router.get("/leaderboard")
+async def get_leaderboard():
+    """Return teams ranked by their current cumulative score."""
+    return await get_leaderboard_data()
+
+@router.post("/reset-db", response_model=StandardResponse)
+async def reset_db(db: aiosqlite.Connection = Depends(get_db)):
+    """Safe database cleanup for testing. Removes all teams, players, submissions, and execution results."""
+    await db.execute("BEGIN TRANSACTION")
+    try:
+        await db.execute("DELETE FROM team_scores")
+        await db.execute("DELETE FROM execution_results")
+        await db.execute("DELETE FROM submissions")
+        await db.execute("DELETE FROM players")
+        await db.execute("DELETE FROM teams")
+        
+        # Reset sqlite_sequence to safely restart auto-increment logic if it exists
+        await db.execute("DELETE FROM sqlite_sequence WHERE name IN ('teams', 'players', 'submissions', 'execution_results')")
+        
+        await db.commit()
+        await broadcast_leaderboard_update()
+        return StandardResponse(status="success", message="Database safely reset. System acts like a fresh start.")
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset DB: {str(e)}")
+
+@router.post("/new-round", response_model=StandardResponse)
+async def new_round(db: aiosqlite.Connection = Depends(get_db)):
+    """Reset round state to allow a new game for the same teams, storing their scores."""
+    await db.execute("BEGIN TRANSACTION")
+    try:
+        await db.execute("DELETE FROM execution_results")
+        await db.execute("DELETE FROM submissions")
+        
+        await db.execute("UPDATE teams SET status = 'waiting', current_phase = 'waiting', group_id = NULL")
+        
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset round: {str(e)}")
+
+    # Stop all timers and active execution
+    from ..core.timer_engine import _active_tasks
+    for task in list(_active_tasks):
+        if not task.done():
+            task.cancel()
+    _active_tasks.clear()
+
+    # Reset assignment state tracking and broadcast to players
+    teams = await get_all_teams()
+    from ..websocket.events import build_event
+    for team_id in teams:
+        manager._assigned_sent.discard(team_id)
+        await manager.broadcast_to_team(team_id, build_event("NEW_ROUND", {}))
+
+    return StandardResponse(status="success", message="Round state successfully reset. Ready for new assignments.")

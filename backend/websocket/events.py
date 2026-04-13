@@ -36,6 +36,7 @@ RUN_CODE     = "RUN_CODE"      # Run code against sample test cases
 ADMIN_CONNECTED     = "ADMIN_CONNECTED"
 ADMIN_STATUS_UPDATE = "ADMIN_STATUS_UPDATE"
 ADMIN_TEAM_UPDATE   = "ADMIN_TEAM_UPDATE"
+LEADERBOARD_UPDATE  = "LEADERBOARD_UPDATE"
 
 
 # ─── Payload Builders ─────────────────────────────────────────────────────────
@@ -86,6 +87,10 @@ def build_admin_status(teams: list) -> dict:
     return build_event(ADMIN_STATUS_UPDATE, {"teams": teams})
 
 
+def build_leaderboard_update(leaderboard: list[dict]) -> dict:
+    return build_event(LEADERBOARD_UPDATE, {"leaderboard": leaderboard})
+
+
 def build_start_part_a(duration_seconds: int) -> dict:
     return build_event(START_PART_A, {"duration_seconds": duration_seconds})
 
@@ -102,11 +107,12 @@ def build_wait_for_swap(remaining_seconds: int) -> dict:
     return build_event(WAIT_FOR_SWAP, {"remaining_seconds": remaining_seconds})
 
 
-def build_start_part_b(duration_seconds: int, partner_code: str, part_b_prompt: str) -> dict:
+def build_start_part_b(duration_seconds: int, partner_code: str, part_b_prompt: str, full_problem: dict) -> dict:
     return build_event(START_PART_B, {
         "duration_seconds": duration_seconds,
         "partner_code": partner_code,
-        "part_b_prompt": part_b_prompt
+        "part_b_prompt": part_b_prompt,
+        "full_problem": full_problem
     })
 
 

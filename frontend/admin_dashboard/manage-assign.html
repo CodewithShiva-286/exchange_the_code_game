@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Manage Assignments</title>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="./manage-assign.css">
+</head>
+
+<body>
+
+   <header>
+      <h1>⚙️ Manage Assignments</h1>
+      <div>
+         <button class="btn btn-green" id="createGroupBtn">+ Create Group</button>
+         <button class="btn btn-light" id="backBtn">⬅ Back</button>
+      </div>
+   </header>
+
+   <!-- Create Group Form -->
+   <div class="form-section" id="createGroupForm" style="display:none;">
+      <h2>Create New Group</h2>
+      <div class="form-row">
+         <label>Group ID</label>
+         <input type="text" id="newGroupId" placeholder="e.g. GROUP-A" />
+      </div>
+      <div class="form-row">
+         <label>Problem 1 (position 1)</label>
+         <select id="newP1"></select>
+      </div>
+      <div class="form-row">
+         <label>Problem 2 (position 2)</label>
+         <select id="newP2"></select>
+      </div>
+      <div class="form-actions">
+         <button class="btn btn-green" id="submitGroupBtn">Create</button>
+         <button class="btn btn-light" id="cancelGroupBtn">Cancel</button>
+      </div>
+      <p class="form-error" id="formError"></p>
+   </div>
+
+   <div class="container">
+      <table>
+         <thead>
+            <tr>
+               <th>Team</th>
+               <th>Current Group</th>
+               <th>Problem 1</th>
+               <th>Problem 2</th>
+               <th>Action</th>
+            </tr>
+         </thead>
+         <tbody id="assignmentTable"></tbody>
+      </table>
+   </div>
+
+   <script src="../config.js"></script>
+   <script src="./manage-assign.js"></script>
+
+</body>
+
+</html>
